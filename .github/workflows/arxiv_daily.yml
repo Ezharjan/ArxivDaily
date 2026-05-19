@@ -1,0 +1,87 @@
+name: ArxivDaily
+
+# Twice-daily checks. Each run hits arXiv once and ONLY emails if there are
+# new matching papers since the last successful run (state.json gates this).
+on:
+  schedule:
+    - cron: "0 8 * * *"
+    - cron: "0 20 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Render preview only, don't send email"
+        type: boolean
+        default: false
+      force:
+        description: "Ignore state.json and resend top matches"
+        type: boolean
+        default: false
+
+# So commits pushed back to state.json have permission to land.
+permissions:
+  contents: write
+
+concurrency:
+  group: arxiv-daily
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # We need a token that can push the state.json update back.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run ArxivDaily
+        id: run
+        env:
+          SMTP_HOST:     ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:     ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_FROM:     ${{ secrets.SMTP_FROM }}
+          SMTP_SECURITY: ${{ secrets.SMTP_SECURITY }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          if [ "${{ github.event.inputs.force }}"   = "true" ]; then ARGS="$ARGS --force"; fi
+          python main.py $ARGS
+
+      - name: Upload preview (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arxiv-digest-preview
+          path: preview/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Commit updated state
+        if: steps.run.outputs.state_changed == 'true'
+        run: |
+          if git diff --quiet -- state.json; then
+            echo "state.json unchanged, nothing to commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state.json
+          SENT="${{ steps.run.outputs.papers_sent }}"
+          git commit -m "chore(state): update seen_ids (sent ${SENT:-0} papers)"
+          git push

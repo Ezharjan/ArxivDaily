@@ -1,0 +1,37 @@
+{
+  "keywords": [
+    "large language model",
+    "retrieval augmented generation",
+    "diffusion model",
+    "mixture of experts",
+    "in-context learning"
+  ],
+  "categories": [
+    "cs.LG",
+    "cs.CL",
+    "cs.AI",
+    "cs.CV"
+  ],
+  "recipients": [
+    "machinelearningscholar@gmail.com"
+  ],
+  "fetch": {
+    "max_results_per_keyword": 30,
+    "lookback_days": 2,
+    "sort_by": "submittedDate"
+  },
+  "ranking": {
+    "max_papers_per_email": 25,
+    "min_score": 1.0,
+    "title_weight": 3.0,
+    "abstract_weight": 1.0,
+    "multi_keyword_bonus": 0.5
+  },
+  "email": {
+    "from_name": "ArxivDaily",
+    "from_address": "",
+    "subject_template": "[ArxivDaily] {n_papers} new {papers} — {date}",
+    "abstract_chars": 320,
+    "include_authors_max": 5
+  }
+}
