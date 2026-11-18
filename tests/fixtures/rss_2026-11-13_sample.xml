@@ -1,0 +1,283 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<rss xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0">
+  <channel>
+    <title>cs.LG+cs.CL+cs.AI+cs.CV updates on arXiv.org</title>
+    <link>http://rss.arxiv.org/rss/cs.LG</link>
+    <description>cs.LG updates on the arXiv.org e-print archive.</description>
+    <atom:link href="http://rss.arxiv.org/rss/cs.LG" rel="self" type="application/rss+xml"/>
+    <docs>http://www.rssboard.org/rss-specification</docs>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 13 Nov 2026 07:36:56 +0000</lastBuildDate>
+    <managingEditor>rss-help@arxiv.org</managingEditor>
+    <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+    <skipDays>
+      <day>Saturday</day>
+      <day>Sunday</day>
+    </skipDays>
+    <item>
+      <title>Overcoming Spurious Correlations in Conditional Diffusion Models via Doubly Robust Target Correction</title>
+      <link>https://arxiv.org/abs/2611.16306</link>
+      <description>arXiv:2611.16306v1 Announce Type: new 
+Abstract: While conditional diffusion models have achieved remarkable success in generation tasks, they memorize spurious correlations within training data. This causes them to deviate from ideal target distributions. Minimizing a covariate shift-adjusted target risk can address this issue. However, retraining models from scratch for different distributions is computationally prohibitive. To overcome this limitation, we propose DR-Diff, a framework that efficiently fine-tunes pre-trained conditional diffusion models. Specifically, DR-Diff leverages a functional gradient approach to derive a pseudo-target. This pseudo-target captures the residual between the base model's noise prediction and the ground-truth noise under the target distribution. Training the model to fit this pseudo-target enables efficient target adaptation. Theoretically, we prove that DR-Diff guarantees target risk reduction at the population level. It also achieves a pseudo-doubly robust property, providing resilience against density ratio estimation errors and base model misspecifications. Empirically, DR-Diff matches the noise prediction accuracy of models trained from scratch on synthetic datasets. Furthermore, it mitigates inter-group disparities in downstream classification tasks.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2611.16306v1</guid>
+      <category>cs.LG</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>new</arxiv:announce_type>
+      <dc:rights>http://arxiv.org/licenses/nonexclusive-distrib/1.0/</dc:rights>
+      <dc:creator>Eiichi Sakurai, Kenji Yamanishi</dc:creator>
+    </item>
+<item>
+      <title>OpticalRAG: Pixel-Space Compression for Token-Efficient Retrieval-Augmented Generation</title>
+      <link>https://arxiv.org/abs/2611.13675</link>
+      <description>arXiv:2611.13675v2 Announce Type: replace 
+Abstract: Retrieval-augmented generation (RAG) is bottlenecked by the token budget of large language models: feeding long documents into the context window is expensive, while aggressive textual compression discards fine-grained information that is irreversibly lost in a one-dimensional token sequence. We argue that this bottleneck is not fundamental to information density but to the choice of compression \emph{modality}. Modern visual encoders can pack the contents of a rendered text page into roughly a hundred visual tokens with little semantic loss, opening a new compression-fidelity tradeoff that purely textual methods cannot reach. We present \textbf{OpticalRAG}, a framework that renders documents as page images, encodes them with a frozen vision encoder, and distills the retrieved visual tokens into as few as $16$ injected tokens before passing them to the LLM. Two ingredients make this work without expensive cross-modal training: (i) \emph{Encoder-Bridged Retrieval}, which projects text-query states into the visual feature space of the frozen encoder, through a projection shared with the compressor, to retrieve visual tokens from a text query, with no contrastive training; and (ii) \emph{Query-Driven Distillation}, a lightweight cross-attention compressor that condenses the retrieved visual tokens into a small set of query-conditioned prefix tokens. On LongBench-v2, BAMBOO, and LooGLE-v2, OpticalRAG achieves the best compression-aware accuracy (CAP) on all three benchmarks while injecting only $16$ tokens, and improves the closed-book Qwen2.5-7B-Instruct backbone by $5.17$ points on LongBench-v2. Code is available at https://github.com/brighterr/OpticalRAG.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2611.13675v2</guid>
+      <category>cs.CL</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>replace</arxiv:announce_type>
+      <dc:rights>http://creativecommons.org/licenses/by/4.0/</dc:rights>
+      <dc:creator>Senhao Liu, Yuheng Zhang, Chunyu Wei, Yueguo Chen, Xinran Zhang</dc:creator>
+    </item>
+<item>
+      <title>Beyond Row-Level Prediction: Evaluating and Learning Composition for Reusable Table Representations</title>
+      <link>https://arxiv.org/abs/2611.14697</link>
+      <description>arXiv:2611.14697v1 Announce Type: new 
+Abstract: Tables are compositional, with content spread across a schema, cell values, rows, and columns. Large-scale operations such as retrieval, overlap estimation, deduplication, and data curation need these local signals composed into one reusable embedding vector per table. Table representation methods, however, are mostly evaluated through row-level prediction or supervised downstream tasks, which do not measure table-level embedding quality directly. We introduce a benchmark that evaluates table-level embeddings through four desiderata: consistency under partial views, discriminability across label granularities, robustness to benign perturbations, and efficiency. Across twelve methods on synthetic and real corpora, lightweight schema- and text-based fingerprints are among the strongest. The sharpest contrast comes from two tabular foundation models, TabPFN and ConTextTab: although both are strong row-level predictors, their states, composed by mean, max, or three further parameter-free pooling rules, trail the strongest fingerprints. We therefore ask whether the gap lies in the encoder or in the compositional rule. Keeping ConTextTab frozen, we learn only the compositional rule over its cell states, using support-conditioned distribution matching (SCDM), a self-supervised loss we propose that matches the distribution of embedding similarities to the distribution of partition overlaps within and across tables. Across all fifteen head configurations, the learned rule raises the Spearman correlation between embedding similarity and partial-view overlap from 0.04 to 0.43-0.50 on synthetic data and improves triplet ranking, clustering, and retrieval, with smaller but systematic gains on real data. A downstream parent-table retrieval task confirms these findings. How local states are composed, and with what objective, substantially affects the quality of table-level embeddings.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2611.14697v1</guid>
+      <category>cs.LG</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>new</arxiv:announce_type>
+      <dc:rights>http://creativecommons.org/licenses/by/4.0/</dc:rights>
+      <dc:creator>Ali Younes, Saeed Ghoorchian, Maximilian Schambach, Georgia Chalvatzaki, Johannes H\"ohne</dc:creator>
+    </item>
+<item>
+      <title>EASTAR: Event-Anchored Semantic and Task-Adaptive Region Representation Learning</title>
+      <link>https://arxiv.org/abs/2611.14990</link>
+      <description>arXiv:2611.14990v1 Announce Type: new 
+Abstract: Urban region representation learning supports a wide range of urban analytics tasks by encoding regional functions and interactions, with human mobility serving as a central signal because it directly captures inter-region interactions. However, most mobility-based methods learn from aggregated origin-destination matrices, where trips driven by different activity purposes are mixed into purpose-agnostic interaction patterns. Although static urban attributes such as POIs and land use can enrich region-level semantics, they do not explicitly ground mobility interactions in activity-purpose signals. As a result, downstream adaptation is often performed over entangled embeddings, making it difficult to select task-relevant functional semantics. To address these limitations, we propose EASTAR, an event-anchored and task-adaptive framework for urban region representation learning. EASTAR treats offline activity events as sparse semantic anchors and uses them to factorize aggregated mobility representations into multiple purpose-related semantic channels. It further introduces free channels to capture latent mobility patterns not covered by event data and a global channel to preserve overall spatial structure. To adapt the learned channel space to different downstream objectives, EASTAR designs a task-adaptive prompt router that initializes task-channel relevance from LLM-derived priors and refines the routing weights through downstream supervision. Experiments on two real-world urban datasets across four prediction tasks show that EASTAR consistently outperforms representative baselines, achieving up to 39.15% reduction in MAE. Ablation and interpretability analyses further demonstrate the effectiveness of event anchoring, semantic channel construction, and task-adaptive routing.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2611.14990v1</guid>
+      <category>cs.LG</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>new</arxiv:announce_type>
+      <dc:rights>http://arxiv.org/licenses/nonexclusive-distrib/1.0/</dc:rights>
+      <dc:creator>Peng Liang (College of Applied Science, Shenzhen University, Shenzhen, China), Genan Dai (School of Artificial Intelligence, Shenzhen Technology University, Shenzhen, China), Bowen Zhang (School of Artificial Intelligence, Shenzhen Technology University, Shenzhen, China)</dc:creator>
+    </item>
+<item>
+      <title>Interpretable machine learning diagnosis of degradation mechanisms in lead-free $RbSn_{0.5}Ge_{0.5}I_{3}$ solar cells from temperature- and illumination-dependent electrical measurements</title>
+      <link>https://arxiv.org/abs/2611.16750</link>
+      <description>arXiv:2611.16750v1 Announce Type: new 
+Abstract: Machine learning coupled with device simulation is widely used to optimize thin-film solar cells, but almost exclusively in the forward direction, from device parameters to predicted performance. The inverse problem encountered after fabrication, namely identifying the mechanism that limits a given device, is still addressed by manual inspection of characterization data. In this work, both directions are examined for lead-free $RbSn_{0.5}Ge_{0.5}I_{3}$ solar cells using approximately 42,000 SCAPS-1D simulations. Replacing the Spiro-OMeTAD hole transport layer with CuI increases the simulated power conversion efficiency from 19.6\% to 21.6\%, almost entirely through the fill factor. Surrogate models trained and tested on a factorial parameter grid substantially overstate their predictive accuracy. An XGBoost regressor attains $R^2 = 0.9997$ on held-out grid points but only 0.58 on independently sampled devices, whereas training on a Latin hypercube design of comparable size restores $R^2 = 0.995$. For the inverse problem, a multi-label classifier identifies which of six degradation mechanisms are present from simulated temperature- and illumination-dependent open-circuit-voltage measurements. It achieves a macro $F_1$ score of 0.938, compared to 0.687 for a calibrated physics-rule baseline. The classifier does not, however, generalize to combinations of mechanisms absent from the training set.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2611.16750v1</guid>
+      <category>cs.LG</category>
+      <category>math-ph</category>
+      <category>math.MP</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>new</arxiv:announce_type>
+      <dc:rights>http://arxiv.org/licenses/nonexclusive-distrib/1.0/</dc:rights>
+      <dc:creator>Nabanita Sarker, Hafiz Imtiaz</dc:creator>
+    </item>
+<item>
+      <title>CAFIN: CUDA-accelerated Adaptive Fisher Information Matrix Network Optimization via GPU-Native Kernel Fusion</title>
+      <link>https://arxiv.org/abs/2611.14589</link>
+      <description>arXiv:2611.14589v1 Announce Type: new 
+Abstract: Second-order optimizers improve deep neural network training using curvature information, but their practical efficiency is limited by GPU execution overhead. AdaFisher reduces Fisher Information Matrix (FIM) approximation costs through diagonal Kronecker structures and exponential moving averages, yet its PyTorch implementation requires sequential CUDA kernel launches, intermediate tensor allocations, and repeated memory accesses. We introduce CAFIN, a GPU-native CUDA kernel fusion framework that improves AdaFisher execution efficiency without changing its optimization formulation. The proposed approach progressively integrates FIM preconditioner construction, exponential moving average updates, gradient preconditioning, momentum accumulation, weight decay, and parameter updates into fused CUDA kernels. Shared-memory reuse, register-resident computation, and in-place operations further reduce memory traffic and intermediate allocations. Experiments using ResNet-18 on CIFAR-10, CIFAR-100, and Tiny ImageNet across NVIDIA GTX 1660 Ti and RTX 3060 Laptop GPUs demonstrate up to 78.4% lower isolated FIM construction latency and 2.1-26.9% lower optimizer-step latency. The implementation also eliminates approximately 18.91 MB of intermediate GPU memory allocations per optimizer step. Numerical validation confirms consistency within the predefined FP32 tolerance, while convergence accuracy remains comparable across evaluated datasets and random seeds. These findings demonstrate that CUDA kernel fusion can substantially accelerate second-order optimization while preserving AdaFisher's underlying mathematical formulation and learning behavior.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2611.14589v1</guid>
+      <category>cs.LG</category>
+      <category>cs.AI</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>new</arxiv:announce_type>
+      <dc:rights>http://arxiv.org/licenses/nonexclusive-distrib/1.0/</dc:rights>
+      <dc:creator>Maryam Arshad, Muhammad Khuram Shahzad</dc:creator>
+    </item>
+<item>
+      <title>An Asynchronous Federated Learning Platform for Lung Adenocarcinoma Grading via Foundation Models and Structural Pruning</title>
+      <link>https://arxiv.org/abs/2611.14590</link>
+      <description>arXiv:2611.14590v1 Announce Type: new 
+Abstract: Classification of lung adenocarcinoma into poorly differentiated (PD) and well-to-moderately differentiated (WMD) subtypes plays an important role in patient survival; however, consistent classification is difficult due to inter-observer variability among pathologists. Collecting data from multiple hospitals is also challenging due to patient privacy concerns. This study proposes a web-based federated learning system that shares only locally trained model weights without sharing patient data between institutions. The UNI2 foundation model and CLAM-SB were used to classify pathological whole slide images. A four-client federated learning system was constructed, and the NLST cohort was reserved exclusively for external validation. In centralized evaluation, joint training with CPTAC and TCGA outperformed single-institution training on external validation, confirming the necessity of multi-institutional data integration. FedAvg, FedProx, FedBN, and FedNova were compared as federated learning algorithms under identical experimental conditions. Test AUC ranked as FedBN, FedProx, FedNova, and FedAvg. FedNova showed the most balanced classification performance between PD and WMD. L1-norm structural pruning at 20%, 30%, and 40% sparsity was applied to reduce model transmission size. FedAvg, FedProx, and FedBN showed a tendency of decreasing Test AUC under pruning, while FedNova achieved improved Test AUC across all sparsity levels. A web-based application was developed supporting slide upload, local training, AI classification, and attention heatmap-based visualization. The combination of FedNova and 40% pruning was confirmed as a practical approach that improves communication efficiency and classification performance while protecting patient privacy.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2611.14590v1</guid>
+      <category>cs.LG</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>new</arxiv:announce_type>
+      <dc:rights>http://creativecommons.org/licenses/by/4.0/</dc:rights>
+      <dc:creator>Moon-Il Joo, Md Ariful Islam Mozumder, Hee-Cheol Kim</dc:creator>
+    </item>
+<item>
+      <title>Adversarial Risk in the Generative AI Era Necessitates Dropping the Small Epsilon Ball</title>
+      <link>https://arxiv.org/abs/2611.14594</link>
+      <description>arXiv:2611.14594v1 Announce Type: new 
+Abstract: Adversarial Machine Learning research is currently centered on the search for the epsilon-ball: minimal perturbations designed to fool models while remaining imperceptible to humans. We argue that this fixation on $\ell_p$ norms is a metrological trap that communicates a distorted perception of risk to defenders, one that is unaligned with real-world system vulnerabilities. This paradigm misleads defenders into optimizing for narrow, mathematical robustness at the expense of systemic security, while simultaneously incentivizing attackers to exploit non-overlapping alternative adversarial pathways. Ultimately, we argue that the dominance of the $\ell_p$ ball does not just fail to reduce harm---it may actively facilitate it by communicating a false sense of security against the wrong threats.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2611.14594v1</guid>
+      <category>cs.LG</category>
+      <category>cs.CR</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>new</arxiv:announce_type>
+      <dc:rights>http://creativecommons.org/licenses/by-nc-sa/4.0/</dc:rights>
+      <dc:creator>Andrew C. Cullen, Neil G. Marchant, Paul Montague, Jiani Xie, Benjamin I. P. Rubinstein</dc:creator>
+    </item>
+<item>
+      <title>StructRL: Model-Free Reinforcement Learning with Replay Graphs</title>
+      <link>https://arxiv.org/abs/2611.14599</link>
+      <description>arXiv:2611.14599v1 Announce Type: new 
+Abstract: StructRL turns the experience collected during reinforcement learning into an explicit replay graph. Once the graph contains a path to the task goal, dynamic programming selects actions on the observed part of the state space; these actions form a graph policy that is defined only where the required transitions have been observed. StructRL transfers these actions to model-free learners: as action preferences for a DQN Q-model and as target directions along shortest observed paths for a SAC actor. For DQN on three sparse-reward MiniGrid tasks, final success rises from 0.10 to 0.90 (DoorKey), 0.10 to 0.80 (KeyCorridor) and 0 to 0.50 (ObstructedMaze); plain DQN does not catch up with three times the budget. For SAC on continuous PointMaze, graph-derived direction labels raise final success from 0.17 to 1.0 on seven matched runs that reached the goal. Distilling the graph policy into a fresh Q-model gives a DoorKey 6x6 controller that reaches the goal from 91% of reachable states, against 38% for plain DQN. Scaling experiments identify three bottlenecks: incomplete graph support, structural aliasing, and loss of graph information in high-dimensional inputs.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2611.14599v1</guid>
+      <category>cs.LG</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>new</arxiv:announce_type>
+      <dc:rights>http://arxiv.org/licenses/nonexclusive-distrib/1.0/</dc:rights>
+      <dc:creator>Ivo Nowak</dc:creator>
+    </item>
+<item>
+      <title>KernelMosaic: An Open Dataset and Agentic Framework for CUDA Kernel Generation</title>
+      <link>https://arxiv.org/abs/2611.14604</link>
+      <description>arXiv:2611.14604v1 Announce Type: new 
+Abstract: Training large language models to generate efficient CUDA kernels requires supervision spanning diverse computational requirements and iterative code optimization. Constructing this supervision is challenging because of heterogeneous specifications, and useful implementations emerge through iterative complicated testing and refinement. We introduce KernelMosaic, an open dataset pairing diverse CUDA tasks with verified solutions and trajectories. Human-guided review and diversity-aware selection curate tasks expressed as natural-language descriptions, reference programs, mathematical specifications, and their intersections. To build the solutions and trajectories, our agentic framework guides a strong LLM through implementation, correctness repair, and performance optimization with reusable CUDA guidance and execution feedback. Supervised fine-tuning of a small open-source model on KernelMosaic raises correctness from 4%, 0%, and 0% to 88%, 82%, and 16% on KernelBench L1, L2, and L3, respectively, while increasing the fraction of tasks with kernels faster than PyTorch eager at every level. Further training experiments show that supervision from the curated trajectories substantially outperforms direct responses and promotes sustained testing and revision. These results demonstrate that KernelMosaic enables a general-purpose model to achieve substantial gains in CUDA kernel generation.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2611.14604v1</guid>
+      <category>cs.LG</category>
+      <category>cs.AI</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>new</arxiv:announce_type>
+      <dc:rights>http://creativecommons.org/licenses/by-nc-nd/4.0/</dc:rights>
+      <dc:creator>Ningyuan Xi, Yuhang Lai, Ning Miao</dc:creator>
+    </item>
+<item>
+      <title>Thompson Sampling using Prior-fitted Diffusion Transformers</title>
+      <link>https://arxiv.org/abs/2611.14656</link>
+      <description>arXiv:2611.14656v1 Announce Type: new 
+Abstract: Thompson sampling is natural randomized strategy for optimizing unknown functions in a black-box manner. In continuous global optimization, Thompson sampling has largely been restricted to Gaussian process priors, as these are essentially the only class for which computing the posterior distribution has been tractable in practice. In this work, we introduce \emph{prior-fitted diffusion transformers}, which are diffusion models that perform Thompson sampling in-context at inference time, after being pre-trained using the prior-fitted network paradigm. To apply these models, we develop a set of practical non-Gaussian priors for general black-box functions---including those that have characteristics that cannot be achieved under Gaussianity, such as priors over unimodal functions. We also quantify the tradeoff between model size and the number of pre-training iterations, and show that these models follow scaling laws akin to those observed in transformers defined over other modalities. Across a set of global optimization benchmarks, we show that prior-fitted diffusion transformers with non-Gaussian priors can achieve improved performance compared to traditional pipelines built on Gaussian processes.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2611.14656v1</guid>
+      <category>cs.LG</category>
+      <category>cs.AI</category>
+      <category>stat.ML</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>new</arxiv:announce_type>
+      <dc:rights>http://creativecommons.org/licenses/by/4.0/</dc:rights>
+      <arxiv:journal_reference>Advances in Neural Information Processing Systems, 2026</arxiv:journal_reference>
+      <dc:creator>Sihwa Park, Jingsen Zhu, Vinamr Jain, Sheng-Yen Chou, Alexander Terenin</dc:creator>
+    </item>
+<item>
+      <title>The Impact of Large Language Models (LLMs) on Code Review Process</title>
+      <link>https://arxiv.org/abs/2508.11034</link>
+      <description>arXiv:2508.11034v2 Announce Type: cross 
+Abstract: Large language models (LLMs) have recently gained prominence in the field of software development, significantly boosting productivity and simplifying teamwork. Although prior studies have examined task-specific applications, the phase-specific effects of LLM assistance on the efficiency of code review processes remain underexplored. This research investigates the effect of GPT on GitHub pull request (PR) workflows, with a focus on reducing resolution time, optimizing phase-specific performance, and assisting developers. We curated a dataset of 25,473 PRs from 9,254 GitHub projects and identified GPT-assisted PRs using a semi-automated heuristic approach that combines keyword-based detection, regular expression filtering, and manual verification until achieving 95% labeling accuracy. We then applied statistical modeling, including multiple linear regression and Mann-Whitney U test, to evaluate differences between GPT-assisted and non-assisted PRs, both at the overall resolution level and across distinct review phases. Our research has revealed that early adoption of GPT can substantially boost the effectiveness of the PR process, leading to considerable time savings at various stages. Our findings suggest that GPT-assisted PRs reduced median resolution time by more than 60% (9 hours compared to 23 hours for non-assisted PRs). We discovered that utilizing GPT can reduce the review time by 33% and the waiting time before acceptance by 87%. Analyzing a sample dataset of 300 GPT-assisted PRs, we discovered that developers predominantly use GPT for code optimization (60%), bug fixing (26%), and documentation updates (12%). This research sheds light on the impact of the GPT model on the code review process, offering actionable insights for software teams seeking to enhance workflows and promote seamless collaboration.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2508.11034v2</guid>
+      <category>cs.SE</category>
+      <category>cs.AI</category>
+      <category>cs.LG</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>cross</arxiv:announce_type>
+      <dc:rights>http://creativecommons.org/licenses/by/4.0/</dc:rights>
+      <dc:creator>Antonio Collante, Samuel Abedu, SayedHassan Khatoonabadi, Ahmad Abdellatif, Ebube Alor, Emad Shihab</dc:creator>
+    </item>
+<item>
+      <title>MS-rPPG: Multi-spectral State Space Model for Remote Photoplethysmography in Driver Monitoring Systems</title>
+      <link>https://arxiv.org/abs/2606.21115</link>
+      <description>arXiv:2606.21115v1 Announce Type: cross 
+Abstract: Remote photoplethysmography (rPPG) is a camera-based technique for measuring physiological signals, particularly cardiac activity. From the remotely measured signals, heart rate can be estimated, which is crucial for health monitoring. In this study, we investigate a driver health monitoring system based on remote heart rate estimation. However, driving environments represent uncontrolled settings where videos are subject to varying illumination conditions and frequent head movements. We introduce MS-rPPG, a multi-spectral framework that combines RGB with near-infrared (NIR) face video to alleviate rPPG estimation under challenging driving conditions. To combine the complementary features from two spectral videos, we propose a cross-spectral linear modulation (CSLM) strategy based on frequency-domain analysis. Moreover, we introduce MS-Mamba, a novel state space model designed to effectively model long-range temporal dependencies while jointly capturing cross-channel interactions between multi-spectral features. We collected a real-world dataset called MS-Drive, which was recorded from 50 participants while driving the vehicle. The proposed method was evaluated on the MR-NIRP Car dataset and MS-Drive datasets. The experimental results indicate that MS-rPPG shows better robustness and heart rate estimation accuracy than previous methods, highlighting its promise for driver health monitoring. The codes are available at github.com/ziiho08/MS-rPPG.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2606.21115v1</guid>
+      <category>cs.CV</category>
+      <category>cs.AI</category>
+      <category>cs.LG</category>
+      <category>eess.IV</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>cross</arxiv:announce_type>
+      <dc:rights>http://arxiv.org/licenses/nonexclusive-distrib/1.0/</dc:rights>
+      <dc:creator>Jiho Choi, Sang Jun Lee</dc:creator>
+    </item>
+<item>
+      <title>Human Grounded Evaluation of Large Language Models for Optical Network Automation</title>
+      <link>https://arxiv.org/abs/2607.18068</link>
+      <description>arXiv:2607.18068v2 Announce Type: cross 
+Abstract: Large language models (LLMs) are increasingly adopted for network automation, yet their output quality and inference cost can vary substantially across LLM families. We present HuGLEN, a stepwise evaluation pipeline that uses an LLM-as-a-judge together with a small set of expert ratings to enable scalable and reproducible comparison of candidate LLMs, and to rank them using a quality efficiency score (QES). We demonstrate HuGLEN for translating outputs from an explainable artificial intelligence (XAI) model for the optical network quality of transmission (QoT) estimation task into operator-friendly explanations. Our results show that a medium-sized LLM (12B parameters) achieves the highest QES, indicating the best trade-off between explanation quality and efficiency. Overall, HuGLEN reduces the human-labeling burden while supporting consistent model selection for operator-facing automation tasks.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2607.18068v2</guid>
+      <category>cs.NI</category>
+      <category>cs.AI</category>
+      <category>cs.LG</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>cross</arxiv:announce_type>
+      <dc:rights>http://arxiv.org/licenses/nonexclusive-distrib/1.0/</dc:rights>
+      <arxiv:DOI>10.1109/ICTON71309.2026.11704905}</arxiv:DOI>
+      <dc:creator>Kiarash Rezaei, Omran Ayoub, Paolo Monti, Carlos Natalino</dc:creator>
+    </item>
+<item>
+      <title>The Overstated Cost of AI Fairness in Criminal Justice</title>
+      <link>https://arxiv.org/abs/2608.01299</link>
+      <description>arXiv:2608.01299v1 Announce Type: cross 
+Abstract: A dominant critique of algorithmic fairness holds that increasing fairness reduces predictive accuracy, imposing a cost on society. We challenge that assumption by empirically analyzing the COMPAS dataset. We make two contributions. First, using causal inference methods, we show that racial bias is not only present in the COMPAS dataset but is also amplified by the models trained on it. Widely used models do more than replicate existing bias; they exacerbate it. This undercuts both the assumption that algorithmic decision-making offers a neutral improvement over human judgment and the weaker claim that it merely mirrors preexisting human bias. Second, we reframe the fairness-accuracy tradeoff. Applying fairness constraints does not necessarily cost predictive accuracy in criminal justice. Prediction systems operationalize concepts such as risk through implicit and often flawed normative choices about what to predict and how. The tradeoff claim assumes that the unconstrained model's prediction is an optimal baseline. Fairness constraints can instead correct distortions introduced by biased outcome variables: rearrest data, in this case, captures and magnifies systemic racial disparities. Under some interventions, therefore, fairness carries none of the cost presumed in policy debates. These dynamics extend beyond criminal justice to lending, hiring, and housing, where biased outcome variables reinforce inequality independently of proxy selection. We draw out what this implies for how law and policy should approach fairness adjustments in criminal law.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2608.01299v1</guid>
+      <category>cs.CY</category>
+      <category>cs.LG</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>cross</arxiv:announce_type>
+      <dc:rights>http://arxiv.org/licenses/nonexclusive-distrib/1.0/</dc:rights>
+      <arxiv:journal_reference>Indiana Law Journal 100 (2025) 1431-1478</arxiv:journal_reference>
+      <dc:creator>Ignacio Cofone (University of Oxford), Warut Khern-am-nuai (McGill University)</dc:creator>
+    </item>
+<item>
+      <title>Improved Streaming Algorithm for Balanced Hypergraph Partitioning</title>
+      <link>https://arxiv.org/abs/2106.07501</link>
+      <description>arXiv:2106.07501v3 Announce Type: replace 
+Abstract: Balanced hypergraph partitioning is an essential task for massive hypergraph analysis in distributed computing.
+  Existing methods usually use the entire hypergraph to obtain structural information before the assignment process.
+  However, many applications require online partitioning, motivating the development of streaming algorithms.
+  In the streaming order, vertices are assigned in real time and their ownership does not change.
+  Therefore, partitioning the streamed vertices under the balance constraint is challenging.
+  In this paper, we propose a method for balanced hypergraph partitioning in the streaming mode.
+  By defining a modularity function under the Erdos-Renyi random hypergraph model, we build the Erdos-Renyi Hypergraph Modularity Greedy.
+  We approximate the hypergraph as a uniform hypergraph and optimize the modularity function with lower computational complexity.
+  Compared with other modularity functions, our modularity function is more suitable for streaming algorithms.
+  Finally, we design a data structure to reduce the execution time for finding the block with minimum capacity.
+  Overall, our method achieves the state-of-the-art performance when evaluated with the cut-net metric.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2106.07501v3</guid>
+      <category>cs.LG</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>replace</arxiv:announce_type>
+      <dc:rights>http://creativecommons.org/licenses/by/4.0/</dc:rights>
+      <dc:creator>Zhicheng Guo</dc:creator>
+    </item>
+<item>
+      <title>CAMRI Loss: Improving the Recall of a Specific Class without Sacrificing Accuracy</title>
+      <link>https://arxiv.org/abs/2209.10920</link>
+      <description>arXiv:2209.10920v2 Announce Type: replace 
+Abstract: In real-world applications of multiclass classification models, misclassification in an important class (e.g., stop sign) can be significantly more harmful than in other classes (e.g., no parking). Thus, it is crucial to improve the recall of an important class while maintaining overall accuracy. For this problem, we found that improving the separation of important classes relative to other classes in the feature space is effective. Existing methods that give a class-sensitive penalty for cross-entropy loss do not improve the separation. Moreover, the methods designed to improve separations between all classes are unsuitable for our purpose because they do not consider the important classes. To achieve the separation, we propose a loss function that explicitly gives loss for the feature space, called class-sensitive additive angular margin (CAMRI) loss. CAMRI loss is expected to reduce the variance of an important class due to the addition of a penalty to the angle between the important class features and the corresponding weight vectors in the feature space. In addition, concentrating the penalty on only the important class hardly sacrifices separating the other classes. Experiments on CIFAR-10, GTSRB, and AwA2 showed that CAMRI loss could improve the recall of a specific class without sacrificing accuracy. In particular, compared with GTSRB's second-worst class recall when trained with cross-entropy loss, CAMRI loss improved recall by 9%.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2209.10920v2</guid>
+      <category>cs.LG</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>replace</arxiv:announce_type>
+      <dc:rights>http://arxiv.org/licenses/nonexclusive-distrib/1.0/</dc:rights>
+      <arxiv:DOI>10.1587/transinf.2022EDP7200</arxiv:DOI>
+      <arxiv:journal_reference>IEICE Transactions on Information and Systems, Vol. E106-D, No. 4, pp. 523-537, Apr. 2023</arxiv:journal_reference>
+      <dc:creator>Daiki Nishiyama, Kazuto Fukuchi, Youhei Akimoto, Jun Sakuma</dc:creator>
+    </item>
+<item>
+      <title>Efficient Multi-Organ Segmentation Using SpatialConfiguration-Net with Low GPU Memory Requirements</title>
+      <link>https://arxiv.org/abs/2111.13630</link>
+      <description>arXiv:2111.13630v3 Announce Type: replace-cross 
+Abstract: Even though many semantic segmentation methods exist that are able to perform well on many medical datasets, they are often not designed for direct use in clinical practice. The two main concerns are generalization to unseen data with a different visual appearance, e.g., images acquired using a different scanner, and efficiency in terms of computation time and required Graphics Processing Unit (GPU) memory. In this work, we employ a multi-organ segmentation model based on the SpatialConfiguration-Net (SCN), which integrates prior knowledge of the spatial configuration among the labelled organs to resolve spurious responses in the network outputs. Furthermore, we modified the architecture of the segmentation model to reduce its memory footprint as much as possible without drastically impacting the quality of the predictions. Lastly, we implemented a minimal inference script for which we optimized both execution time and required GPU memory.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2111.13630v3</guid>
+      <category>eess.IV</category>
+      <category>cs.CV</category>
+      <category>cs.LG</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>replace-cross</arxiv:announce_type>
+      <dc:rights>http://creativecommons.org/licenses/by-sa/4.0/</dc:rights>
+      <dc:creator>Franz Thaler, Christian Payer, Horst Bischof, Darko Stern</dc:creator>
+    </item>
+<item>
+      <title>A Tutorial on Gaussian Process Learning-based Model Predictive Control</title>
+      <link>https://arxiv.org/abs/2404.03689</link>
+      <description>arXiv:2404.03689v2 Announce Type: replace-cross 
+Abstract: This tutorial provides an accessible and implementation-oriented introduction to Gaussian process learning-based model predictive control (GP-MPC), which combines probabilistic residual modeling with receding-horizon control. Its central tutorial contribution is a detailed, step-by-step derivation of multi-step mean and covariance propagation for GP-augmented prediction models. The derivation shows how commonly used propagation formulas follow from the laws of total expectation and total covariance, and clarifies the roles of the GP posterior mean, GP posterior covariance, uncertain inputs, and query-output cross-covariances. Building on this foundation, the article distinguishes mean-only unconstrained GP predictive control from uncertainty-aware constrained GP-MPC, clarifies regulation and output-tracking formulations, and provides concise implementation and computational-complexity guidance, including practical software-tool references and discussion of the scope of closed-loop guarantees. Mobile-robot path-following examples illustrate mean-only unconstrained implementations, whereas mixed-vehicle platooning illustrates uncertainty-aware constrained GP-MPC with uncertainty-dependent safety-distance tightening. The tutorial is intended to help researchers and practitioners understand, implement, and critically evaluate GP-MPC designs for robotic and autonomous systems operating under modeling uncertainty.</description>
+      <guid isPermaLink="false">oai:arXiv.org:2404.03689v2</guid>
+      <category>cs.RO</category>
+      <category>cs.LG</category>
+      <category>cs.SY</category>
+      <category>eess.SY</category>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 -0500</pubDate>
+      <arxiv:announce_type>replace-cross</arxiv:announce_type>
+      <dc:rights>http://arxiv.org/licenses/nonexclusive-distrib/1.0/</dc:rights>
+      <arxiv:DOI>10.1145/3841464</arxiv:DOI>
+      <arxiv:journal_reference>ACM Computing Surveys, vol. 58, no. 15, Article 393, pp. 1-34, 2026</arxiv:journal_reference>
+      <dc:creator>Jie Wang, Youmin Zhang</dc:creator>
+    </item>
+  </channel>
+</rss>

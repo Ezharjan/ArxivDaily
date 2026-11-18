@@ -1,505 +1,209 @@
 # ArxivDaily
 
-A zero-cost GitHub Actions toolkit that watches arXiv for new papers matching
-your keywords, scores them by relevance, and emails you an elegant digest
-**only when there is something new**.
+**New arXiv papers on your topics, in your inbox every weekday.** ArxivDaily
+reads arXiv's daily announcement, picks the papers that match your keywords,
+ranks them, and emails you a clean digest, only when there is something new.
+It runs free on GitHub Actions: no server, no database, and nothing to install.
 
-## Table of Contents
+<p align="center">
+  <img src="docs/images/email.png" alt="An ArxivDaily email: 25 new papers, with each topic's keywords highlighted in its own colour" width="720">
+</p>
 
-1. [Features](#features)
-2. [Prerequisites](#prerequisites)
-3. [Setup Guide](#setup-guide)
-   - [Step 1 — Fork or push this repo](#step-1--fork-or-push-this-repo)
-   - [Step 2 — Create a Gmail App Password (or other SMTP credentials)](#step-2--create-a-gmail-app-password-or-other-smtp-credentials)
-   - [Step 3 — Add SMTP secrets to GitHub](#step-3--add-smtp-secrets-to-github)
-   - [Step 4 — Configure your keywords and recipients](#step-4--configure-your-keywords-and-recipients)
-   - [Step 5 — Test it](#step-5--test-it)
-4. [SMTP Setup for Other Providers](#smtp-setup-for-other-providers)
-5. [Configuration Reference](#configuration-reference)
-6. [How the Scoring Works](#how-the-scoring-works)
-7. [How "Only on Update" Works](#how-only-on-update-works)
-8. [Local Development](#local-development)
-9. [CLI Options](#cli-options)
-10. [File Layout](#file-layout)
-11. [Troubleshooting](#troubleshooting)
-12. [Cost](#cost)
+- **About five minutes of setup:** fork, add two secrets, click *Run workflow*.
+- **You see why each paper matched:** every topic gets its own highlighter
+  colour in titles and abstracts.
+- **Never the same paper twice.** Weekends and quiet days send nothing.
+- **Optional web archive** to search and browse past papers. It stays up to
+  date by itself, so there's no need to refresh.
+- **Works with Gmail, iCloud, Yahoo, QQ, 163, Zoho, Fastmail** and most other
+  providers that allow sending by SMTP.
 
 ---
 
-## Features
+## Quick start
 
-- **Free** — runs entirely on GitHub Actions free minutes (public repo = unlimited).
-- **Config-only setup** — all knobs live in `config.json`; no code edits needed.
-- **Generic SMTP transport** — works with Gmail, Outlook, Fastmail, AWS SES,
-  Mailgun, or any provider that speaks SMTP.
-- **Smart deduplication** — `state.json` tracks every paper ID already sent,
-  so you never get the same paper twice.
-- **Keyword relevance scoring** — papers are ranked by how many of your keywords
-  appear in the title and abstract, with configurable weights and bonuses.
-- **Dual-format email** — sends a responsive HTML digest with paper cards, badges,
-  and links, plus a plain-text fallback for all email clients.
+You need a GitHub account and an email account that can send mail by SMTP.
+Gmail is the easiest, so it's used below; [other providers](docs/setup-guide.md#2-get-an-app-password)
+work the same way. The [step-by-step setup guide](docs/setup-guide.md) walks
+through every click if you'd like more detail.
+
+### 1. Fork this repository
+
+Click **Fork** (top right of this page), then **Create fork**. In your fork,
+open the **Actions** tab and click **I understand my workflows, go ahead and
+enable them**. GitHub turns workflows off in new forks until you do this.
+
+### 2. Create an app password
+
+ArxivDaily signs in to your mail account to send the digest. Gmail requires an
+*app password* for this; your normal password won't work.
+
+1. Turn on 2-Step Verification for your Google account at [myaccount.google.com/security](https://myaccount.google.com/security) (skip this if it's already on).
+2. Open [App passwords](https://myaccount.google.com/apppasswords), type `ArxivDaily` as the name and click **Create**.
+3. Copy the 16-letter password that appears. You'll paste it in the next step.
+
+### 3. Add two secrets
+
+In your fork, open **Settings → Secrets and variables → Actions** and click
+**New repository secret** for each of these:
+
+| Name | Value |
+|---|---|
+| `SMTP_USERNAME` | your full Gmail address, e.g. `ada.lovelace@gmail.com` |
+| `SMTP_PASSWORD` | the app password from step 2 (spaces don't matter) |
+
+That's all ArxivDaily needs: the mail server is detected from your address,
+and the digest goes to that same address. To send it somewhere else (or to
+several people), add a third secret, `MAIL_TO`, with comma-separated addresses.
+
+### 4. Choose your topics
+
+Open [`config.json`](config.json), click the pencil icon, and replace the first
+two entries with your own keywords and [arXiv categories](https://arxiv.org/category_taxonomy):
+
+```json
+  "keywords": ["graph neural network", "molecular generation", "protein folding"],
+  "categories": ["cs.LG", "q-bio.BM"],
+```
+
+Click **Commit changes**. ArxivDaily checks the file straight away. If you
+made a typo, the commit gets a red ✗, and the run page shows the exact line
+and what to fix.
+
+### 5. Send yourself a test email
+
+Open **Actions → ArxivDaily → Run workflow**, choose **send test email**, and
+click **Run workflow**. Within a minute or two you'll get an email confirming your
+settings, with a sample of recent matching papers.
+
+**You're done.** From now on ArxivDaily runs every day after arXiv's nightly
+update and emails you whenever new papers match your topics.
+
+> [!TIP]
+> Every run writes a short report on its run page in the **Actions** tab:
+> what was checked, what matched, and what was sent. Start there whenever
+> something looks off, then see [Troubleshooting](docs/troubleshooting.md).
 
 ---
 
-## Prerequisites
+## Daily use
 
-- A **GitHub account** (free tier is fine).
-- An **email account** with SMTP access. Gmail with an App Password is the
-  easiest option (detailed below), but any SMTP provider works.
-- Python 3.9+ (only needed if you want to run locally; GitHub Actions handles
-  this automatically).
+| You want to… | Do this |
+|---|---|
+| Change your topics | Edit `config.json` on GitHub (pencil icon) and commit. |
+| Send to other people | Add or edit the `MAIL_TO` secret: `you@x.org, colleague@y.edu`. |
+| See what the next email would contain | **Run workflow → preview only (no email)**, then open the run's summary. |
+| Get the latest papers again | **Run workflow → resend latest papers**. |
+| Pause the emails | **Actions → ArxivDaily → ⋯ → Disable workflow**. Enable it again to resume. |
+| Change the delivery time | Edit the two `cron:` lines in `.github/workflows/arxiv_daily.yml`; see [Delivery time](docs/configuration.md#delivery-time). |
+| Browse past papers | Turn on the [web archive](#web-archive-optional). |
 
----
+The **Run workflow** menu has four options:
 
-## Setup Guide
+| Option | What it does |
+|---|---|
+| **send digest** | The normal daily run: email any new matching papers, then remember them. |
+| **send test email** | Checks your email settings and sends a sample. Doesn't change anything. |
+| **preview only (no email)** | Shows what would be sent, on the run page and as a downloadable preview. |
+| **resend latest papers** | Like *send digest*, but includes papers you've already received. |
 
-### Step 1 — Fork or push this repo
+## Web archive (optional)
 
-**Option A: Fork on GitHub**
+ArxivDaily can also publish a searchable page of everything it has found, at `https://<your-username>.github.io/ArxivDaily/`.
 
-1. Click the **Fork** button in the top-right corner of this repo's page.
-2. This creates your own copy under `github.com/<your-username>/ArxivDaily`.
-3. GitHub Actions workflows are paused on forks by default. Go to the
-   **Actions** tab in your fork and click **"I understand my workflows, go
-   ahead and enable them"**.
+<p align="center">
+  <img src="docs/images/web-archive.png" alt="The ArxivDaily web archive: topic filters, search, and papers grouped by day" width="720">
+</p>
 
-**Option B: Push a fresh copy**
+To turn it on, open **Settings → Pages**, set **Source** to **GitHub Actions**,
+then run the workflow once (any option). The address appears on the run page
+and in the footer of every email.
+
+The page checks for new papers every few minutes and when you come back to the
+tab, so it stays current without refreshing. It loads older days as you
+scroll, remembers where you were, and works on phones and in dark mode.
+Filter by topic, search titles, authors and abstracts, or press <kbd>/</kbd>
+to jump to the search box.
+
+> [!NOTE]
+> The web archive is a public page, even if your repository is private (unless
+> your organization uses GitHub Enterprise Cloud, which can restrict who sees
+> it). Private repositories also need a paid GitHub plan for Pages. The
+> archive contains only paper metadata and your topic list, never email
+> addresses.
+
+## Configuration
+
+`config.json` controls what ArxivDaily looks for. Only `keywords` is required;
+everything else has a sensible default.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `keywords` | — | Phrases to look for in titles and abstracts. Case, hyphens and plurals don't matter: `"diffusion model"` also finds *Diffusion-Models*. |
+| `categories` | all of arXiv | [arXiv categories](https://arxiv.org/category_taxonomy) to watch, e.g. `"cs.CV"`, or a whole archive such as `"physics"`. |
+| `ranking.max_papers_per_email` | `25` | The most relevant papers per email. |
+| `ranking.min_score` | `1.0` | Raise it to keep only stronger matches. |
+| `fetch.include_cross_lists` | `true` | Include papers cross-listed into your categories from elsewhere. |
+| `fetch.include_revisions` | `false` | Also include new versions of older papers. |
+| `email.abstract_chars` | `320` | How much of each abstract to show. |
+
+The [configuration reference](docs/configuration.md) explains every setting,
+the secrets, scoring, and the delivery schedule.
+
+## How it works
+
+```mermaid
+flowchart LR
+    A[arXiv daily feed<br>RSS, after midnight US Eastern] --> B[Match and rank<br>by your keywords]
+    B --> C{Anything not<br>sent before?}
+    C -- yes --> D[Email digest]
+    D --> E[Remember the papers<br>in state.json]
+    E --> F[Web archive<br>optional]
+    C -- no --> G[Nothing to do today]
+```
+
+1. **Fetch.** After each arXiv announcement (Sunday to Thursday, 20:00 US
+   Eastern), arXiv refreshes its per-category feeds at midnight. ArxivDaily
+   reads them in one request. If the feed is unavailable, it falls back to
+   arXiv's search API, retrying politely when arXiv is busy.
+2. **Rank.** Each paper is scored by where your keywords appear (a title hit
+   counts 3×, an abstract hit 1×), with a bonus for matching several topics.
+3. **Email.** The top papers go out as one email: one copy per recipient, so
+   addresses stay private.
+4. **Remember.** The paper IDs are committed to `state.json`, so you never get
+   a paper twice. That's also why the second daily run sends something only if
+   the first one missed it, for example because arXiv was briefly unavailable.
+   These small commits also keep GitHub from pausing the schedule, which it
+   does in public repositories after 60 days without activity.
+
+## Run it on your computer
+
+ArxivDaily needs only Python 3.9 or newer, with no packages to install.
 
 ```bash
-git clone https://github.com/<original-owner>/ArxivDaily.git
-cd ArxivDaily
-git remote set-url origin https://github.com/<your-username>/ArxivDaily.git
-git push -u origin main
+python main.py --dry-run --open   # build the email preview and open it in your browser
+python main.py --serve            # preview the web archive at http://127.0.0.1:8000
 ```
 
-### Step 2 — Create a Gmail App Password (or other SMTP credentials)
-
-If you are using **Gmail** as your sending email, you need to generate an
-App Password. Gmail blocks sign-ins from "less secure apps" by default, so a
-regular password will not work.
-
-1. **Enable 2-Step Verification** (required before you can create App Passwords):
-   - Go to <https://myaccount.google.com/security>.
-   - Under **"How you sign in to Google"**, click **2-Step Verification**.
-   - Follow the prompts to turn it on (you will add a phone number or
-     authenticator app).
-
-2. **Generate an App Password**:
-   - Go to <https://myaccount.google.com/apppasswords>.
-   - You may be asked to sign in again.
-   - In the **"App name"** field, type something like `ArxivDaily` and click
-     **Create**.
-   - Google will show a **16-character password** (formatted as `xxxx xxxx xxxx xxxx`).
-   - **Copy this password immediately** — you will not be able to see it again.
-   - When entering it as a GitHub secret, you can include or omit the spaces;
-     both work.
-
-3. **Important notes**:
-   - If you don't see the App Passwords page, make sure 2-Step Verification
-     is turned on first.
-   - An App Password gives limited SMTP access — it cannot be used to sign in
-     to your Google account on the web.
-   - You can revoke the App Password at any time from the same page.
-
-> **Not using Gmail?** See [SMTP Setup for Other Providers](#smtp-setup-for-other-providers) below.
-
-### Step 3 — Add SMTP secrets to GitHub
-
-GitHub Actions secrets keep your credentials encrypted and out of your code.
-The workflow reads them at runtime as environment variables.
-
-1. Go to your repo on GitHub.
-2. Click **Settings** (the gear icon in the repo's top navigation bar).
-3. In the left sidebar, click **Secrets and variables** → **Actions**.
-4. Click the **"New repository secret"** button.
-5. Add each of the following secrets **one at a time** (click "Add secret"
-   after each):
-
-| Secret name     | Value to enter              | Required? | Notes |
-|-----------------|-----------------------------|-----------|-------|
-| `SMTP_HOST`     | `smtp.gmail.com`            | Yes | The SMTP server hostname of your email provider. |
-| `SMTP_PORT`     | `587`                       | Yes | Use `587` for STARTTLS (most providers), `465` for SSL. |
-| `SMTP_USERNAME` | `you@gmail.com`             | Yes | Your full email address used to log in to the SMTP server. |
-| `SMTP_PASSWORD` | `xxxx xxxx xxxx xxxx`       | Yes | Your Gmail App Password (from Step 2) or normal SMTP password. |
-| `SMTP_FROM`     | `you@gmail.com`             | No  | The "From" address on the digest email. Defaults to `SMTP_USERNAME` if omitted. |
-| `SMTP_SECURITY` | `starttls`                  | No  | One of `starttls` (default), `ssl`, or `none`. Leave blank for most providers. |
-
-**Visual walkthrough:**
-
-```
-Your repo page
-  → Settings (tab)
-    → Secrets and variables (left sidebar)
-      → Actions
-        → "New repository secret" (green button)
-          → Name: SMTP_HOST
-          → Secret: smtp.gmail.com
-          → "Add secret"
-        (repeat for each secret)
-```
-
-After adding all secrets, your **Actions secrets** page should list:
-`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` (and optionally
-`SMTP_FROM` and `SMTP_SECURITY`).
-
-### Step 4 — Configure your keywords and recipients
-
-Edit `config.json` in your repo. The two most important fields are:
-
-```jsonc
-{
-  "keywords": [
-    "large language model",
-    "retrieval augmented generation",
-    "diffusion model"
-    // Add your own research topics here
-  ],
-  "recipients": [
-    "your-email@example.com"
-    // Add more email addresses to send the digest to multiple people
-  ]
-}
-```
-
-You can also customize the arXiv categories to search within:
-
-```jsonc
-{
-  "categories": [
-    "cs.LG",   // Machine Learning
-    "cs.CL",   // Computation and Language (NLP)
-    "cs.AI",   // Artificial Intelligence
-    "cs.CV"    // Computer Vision
-    // Full list: https://arxiv.org/category_taxonomy
-  ]
-}
-```
-
-Commit and push your changes:
-
-```bash
-git add config.json
-git commit -m "configure keywords and recipients"
-git push
-```
-
-### Step 5 — Test it
-
-1. Go to the **Actions** tab in your GitHub repo.
-2. In the left sidebar, click on the **ArxivDaily** workflow.
-3. Click the **"Run workflow"** dropdown button (top right of the runs list).
-4. Check the **"Render preview only, don't send email"** box for a safe first test.
-5. Click **"Run workflow"**.
-
-The run should complete in under 30 seconds. Click on the completed run to see
-its logs and download the **arxiv-digest-preview** artifact — this is the HTML
-email that would have been sent.
-
-Once you're happy with the preview, run the workflow again **without** the
-dry-run checkbox to send a real email. If it succeeds, you're all set — the
-workflow will now run automatically at **08:00 UTC** and **20:00 UTC** every day.
-
----
-
-## SMTP Setup for Other Providers
-
-The toolkit works with any SMTP provider. Here are the settings for common ones:
-
-### Outlook / Hotmail
-
-| Secret           | Value                       |
-|------------------|-----------------------------|
-| `SMTP_HOST`      | `smtp-mail.outlook.com`     |
-| `SMTP_PORT`      | `587`                       |
-| `SMTP_USERNAME`  | `you@outlook.com`           |
-| `SMTP_PASSWORD`  | Your account password (or App Password if 2FA is enabled) |
-| `SMTP_SECURITY`  | `starttls`                  |
-
-### Fastmail
-
-| Secret           | Value                       |
-|------------------|-----------------------------|
-| `SMTP_HOST`      | `smtp.fastmail.com`         |
-| `SMTP_PORT`      | `465`                       |
-| `SMTP_USERNAME`  | `you@fastmail.com`          |
-| `SMTP_PASSWORD`  | Generate at Settings → Privacy & Security → App Passwords |
-| `SMTP_SECURITY`  | `ssl`                       |
-
-### AWS SES (Simple Email Service)
-
-| Secret           | Value                       |
-|------------------|-----------------------------|
-| `SMTP_HOST`      | `email-smtp.us-east-1.amazonaws.com` (use your region) |
-| `SMTP_PORT`      | `587`                       |
-| `SMTP_USERNAME`  | Your SES SMTP username (from IAM) |
-| `SMTP_PASSWORD`  | Your SES SMTP password (from IAM) |
-| `SMTP_SECURITY`  | `starttls`                  |
-
-Note: Your "From" address must be verified in SES. Set `SMTP_FROM` to the
-verified address if it differs from `SMTP_USERNAME`.
-
-### Mailgun
-
-| Secret           | Value                       |
-|------------------|-----------------------------|
-| `SMTP_HOST`      | `smtp.mailgun.org`          |
-| `SMTP_PORT`      | `587`                       |
-| `SMTP_USERNAME`  | `postmaster@your-domain.com` |
-| `SMTP_PASSWORD`  | Your Mailgun SMTP password  |
-| `SMTP_SECURITY`  | `starttls`                  |
-
----
-
-## Configuration Reference
-
-All settings live in `config.json`. Here is the full schema with defaults:
-
-```jsonc
-{
-  // === Keywords (required) ===
-  // Phrases to search for in paper titles and abstracts.
-  // Matching is case-insensitive; hyphens and spaces are interchangeable
-  // (e.g., "in-context learning" also matches "in context learning").
-  "keywords": ["large language model", "..."],
-
-  // === Categories (optional, default: all) ===
-  // arXiv category codes to restrict the search.
-  // Full taxonomy: https://arxiv.org/category_taxonomy
-  "categories": ["cs.LG", "cs.CL", "cs.AI"],
-
-  // === Recipients (required) ===
-  // Email addresses that will receive the digest.
-  "recipients": ["you@example.com"],
-
-  // === Fetch settings ===
-  "fetch": {
-    "max_results_per_keyword": 30,   // max papers to retrieve per keyword query
-    "lookback_days": 2,              // ignore papers older than this many days
-    "sort_by": "submittedDate"       // "submittedDate", "lastUpdatedDate", or "relevance"
-  },
-
-  // === Ranking settings ===
-  "ranking": {
-    "max_papers_per_email": 25,      // cap on papers included in one digest
-    "min_score": 1.0,                // papers below this score are dropped
-    "title_weight": 3.0,             // multiplier for keyword hits in the title
-    "abstract_weight": 1.0,          // multiplier for keyword hits in the abstract
-    "multi_keyword_bonus": 0.5       // bonus per additional distinct keyword matched
-  },
-
-  // === Email template settings ===
-  "email": {
-    "from_name": "ArxivDaily",       // display name on the From header
-    "from_address": "",              // From email; defaults to SMTP_FROM or SMTP_USERNAME
-    "subject_template": "[ArxivDaily] {n_papers} new {papers} — {date}",
-    //   Available placeholders: {n_papers}, {papers} ("paper"/"papers"), {date}
-    "abstract_chars": 320,           // max characters of abstract to include
-    "include_authors_max": 5         // show at most N authors (rest become "et al.")
-  }
-}
-```
-
----
-
-## How the Scoring Works
-
-Each paper is scored as:
-
-```
-score = (title_weight x title_hits) + (abstract_weight x abstract_hits)
-      + multi_keyword_bonus x (distinct_keywords_matched - 1)
-```
-
-Where `title_hits` and `abstract_hits` are the number of times any keyword
-phrase appears (case-insensitively) in the title or abstract. The
-`multi_keyword_bonus` rewards papers that match multiple different keywords.
-
-Papers with a score below `min_score` are discarded. The remaining papers are
-sorted by score (descending), then by update date (most recent first), and
-the top `max_papers_per_email` are sent.
-
----
-
-## How "Only on Update" Works
-
-`state.json` holds a rolling list of arXiv paper IDs already sent (capped
-at 5,000 entries). Each run:
-
-1. Fetches today's matching papers from arXiv.
-2. Subtracts any paper already in `seen_ids`.
-3. If no new papers remain, the run exits without sending an email.
-4. Otherwise, it sends the digest, adds the new IDs to `seen_ids`, and the
-   GitHub Actions workflow automatically commits the updated `state.json`
-   back to the repo.
-
-Because the schedule polls twice a day, you get new papers shortly after
-arXiv publishes them, and never receive the same paper twice.
-
----
-
-## Local Development
-
-You can run ArxivDaily on your own machine for testing and previewing.
-
-### Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### Preview without sending (dry run)
-
-This renders the digest to `preview/preview.html` and `preview/preview.txt`
-without sending any email or updating `state.json`:
-
-```bash
-python main.py --dry-run --verbose
-```
-
-Open `preview/preview.html` in your browser to see exactly what the email
-would look like.
-
-### Send a real email locally
-
-Set the SMTP environment variables and run without `--dry-run`:
-
-```bash
-# Linux / macOS
-export SMTP_HOST="smtp.gmail.com"
-export SMTP_PORT="587"
-export SMTP_USERNAME="you@gmail.com"
-export SMTP_PASSWORD="xxxx xxxx xxxx xxxx"
-export SMTP_SECURITY="starttls"
-
-python main.py --verbose
-```
-
-```powershell
-# Windows (PowerShell)
-$env:SMTP_HOST = "smtp.gmail.com"
-$env:SMTP_PORT = "587"
-$env:SMTP_USERNAME = "you@gmail.com"
-$env:SMTP_PASSWORD = "xxxx xxxx xxxx xxxx"
-$env:SMTP_SECURITY = "starttls"
-
-python main.py --verbose
-```
-
-### Force resend (ignore seen papers)
-
-```bash
-python main.py --force --verbose          # send all top matches, even if seen before
-python main.py --force --dry-run          # preview what would be resent
-```
-
----
-
-## CLI Options
-
-| Flag               | Description |
-|--------------------|-------------|
-| `--dry-run`        | Render `preview/preview.html` and `preview/preview.txt` but do not send email and do not update `state.json`. |
-| `--force`          | Resend all top-ranked papers, even if they are already in `state.json`'s `seen_ids`. |
-| `--no-save-state`  | Skip writing to `state.json` after the run (useful for debugging). |
-| `-v` / `--verbose` | Enable debug-level logging for more detailed output. |
-
-Flags can be combined. For example, `--force --dry-run` previews all current
-top matches regardless of what has been sent before.
-
----
-
-## File Layout
-
-```
-.
-├── .github/workflows/
-│   └── arxiv_daily.yml         # GitHub Actions workflow (scheduled + manual trigger)
-├── config.json                 # Your keywords, categories, recipients, and settings
-├── state.json                  # Auto-updated by the workflow (tracks seen paper IDs)
-├── main.py                     # CLI entry point — orchestrates the full pipeline
-├── requirements.txt            # Python dependencies (arxiv, feedparser)
-├── preview/                    # Generated email previews (git-ignored in production)
-│   ├── preview.html
-│   └── preview.txt
-└── src/
-    ├── __init__.py             # Package init (version string)
-    ├── arxiv_fetcher.py        # arXiv API queries and Paper dataclass
-    ├── email_sender.py         # HTML/text rendering + SMTP transport
-    ├── relevance.py            # Keyword scoring and ranking logic
-    └── state.py                # seen_ids persistence and deduplication
-```
-
----
-
-## Troubleshooting
-
-### "Missing required SMTP environment variables: SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD"
-
-You haven't added the secrets to your GitHub repo yet, or the secret names
-have a typo. Go to **Settings → Secrets and variables → Actions** and verify
-each secret is present and named exactly as shown (all uppercase, underscores).
-
-### Gmail: "Username and Password not accepted" (error 535)
-
-This means Gmail rejected your credentials. Common causes:
-
-- You used your regular Gmail password instead of an **App Password**.
-  Follow [Step 2](#step-2--create-a-gmail-app-password-or-other-smtp-credentials)
-  to generate one.
-- The App Password was revoked or expired. Generate a new one.
-- `SMTP_USERNAME` must be your full email address (e.g., `you@gmail.com`),
-  not just the username part.
-
-### Gmail: "Please log in via your web browser" (error 534)
-
-This error occurs when 2-Step Verification is not enabled. Google requires it
-before you can use App Passwords. Enable it at
-<https://myaccount.google.com/security>.
-
-### The workflow runs but no email arrives
-
-Check the workflow logs in **Actions → ArxivDaily → (latest run)**:
-
-- **"no new matching papers — skipping email"** — ArxivDaily found papers but
-  they were all in `seen_ids` from a previous run. Try running with the
-  **force** option to resend.
-- **"0 papers passed scoring threshold"** — None of the fetched papers matched
-  your keywords well enough. Try lowering `min_score` in `config.json` or
-  adding broader keywords.
-- **"fetched 0 unique papers"** — No papers were found in your categories
-  within the lookback window. Try increasing `lookback_days` or adding more
-  categories.
-
-Also check your spam/junk folder — automated emails sometimes land there the
-first time.
-
-### The workflow does not run on schedule
-
-- On **forked repos**, scheduled workflows are disabled by default. Go to the
-  **Actions** tab and enable them.
-- GitHub may delay or skip scheduled runs if Actions is under heavy load.
-  Runs are guaranteed to execute but may be delayed by a few minutes.
-- If the repo has had no activity (commits, issues, PRs) for **60 days**,
-  GitHub automatically disables scheduled workflows. Push any commit to
-  re-enable them.
-
-### state.json is not being committed back
-
-The workflow only commits `state.json` when at least one new paper was sent.
-If you see `state.json unchanged, nothing to commit` in the logs, that is
-normal — it means no new papers were found in that run.
-
-### "Connection refused" or timeout errors
-
-Verify that `SMTP_HOST` and `SMTP_PORT` are correct for your provider. Common
-mismatches: using port `465` with `starttls` (should be `ssl`) or port `587`
-with `ssl` (should be `starttls`).
-
----
-
-## Cost
-
-GitHub Actions is **free for public repositories** (unlimited minutes). For
-private repos, the free tier provides 2,000 minutes per month. Each ArxivDaily
-run takes under 30 seconds, so even with twice-daily scheduling you use about
-1 minute per day — well within any plan's limits.
+To send email locally, copy `.env.example` to `.env` and fill in your two
+settings, then try `python main.py --check` followed by
+`python main.py --test-email`. The [local usage guide](docs/run-locally.md) has the details.
+
+## Documentation
+
+- [Setup guide](docs/setup-guide.md): every step spelled out, for Gmail, iCloud, Yahoo, QQ, 163 and more.
+- [Configuration reference](docs/configuration.md): all settings, secrets, scoring and the delivery schedule.
+- [Troubleshooting](docs/troubleshooting.md): what each message on the run page means and how to fix it.
+- [Run it on your computer](docs/run-locally.md): previews, tests and local sending.
+- [Changelog](CHANGELOG.md): what's new, and how to upgrade from version 1.
+
+## Cost and limits
+
+GitHub Actions is free for public repositories. A run takes well under a
+minute, so even a private repository uses only about 60 to 120 of the 2,000
+free minutes per month. arXiv's feeds and API are free; ArxivDaily usually
+makes a single small request per run, well within
+[arXiv's API terms](https://info.arxiv.org/help/api/tou.html).
+
+Thank you to arXiv for use of its open access interoperability. ArxivDaily is
+not affiliated with arXiv.

@@ -1,184 +1,131 @@
-"""Compose and send the daily arXiv email.
+"""Send the digest over SMTP.
 
-Renders both an HTML body (one card per paper) and a plain-text fallback.
-Transport is generic SMTP (host/port/user/password from env), so the same
-code works with Gmail, Outlook, Fastmail, SES, Mailgun SMTP, etc.
+Only two settings are required: ``SMTP_USERNAME`` (your email address) and
+``SMTP_PASSWORD`` (an app password). The server, port and encryption are
+detected from the address for common providers (Gmail, iCloud, Yahoo, QQ,
+163, Zoho, Fastmail, ...) and can always be set explicitly:
+
+  SMTP_HOST      server, e.g. smtp.gmail.com (auto-detected when possible)
+  SMTP_PORT      465 or 587 (auto-detected; 465 implies SSL)
+  SMTP_SECURITY  starttls | ssl | none (auto-detected from the port)
+  SMTP_FROM      From address (defaults to SMTP_USERNAME)
+
+Each recipient gets their own copy, so nobody sees the other addresses.
 """
 
 from __future__ import annotations
 
-import datetime as _dt
 import logging
 import os
 import smtplib
+import socket
 import ssl
+from dataclasses import dataclass
 from email.message import EmailMessage
-from email.utils import formataddr, make_msgid
-from html import escape
-from typing import List, Sequence
+from email.utils import formataddr, formatdate, make_msgid
+from typing import List, Sequence, Tuple
 
-from .arxiv_fetcher import Paper
+from . import __version__
 
 log = logging.getLogger(__name__)
 
+_GMX_HINT = ("your GMX password (or an app-specific password, if you use two-factor authentication), "
+             "with POP3/IMAP access turned on in GMX's settings")
 
-_CSS = (
-    " body { margin:0; padding:0; background:#f6f7f9;"
-    " font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;"
-    " color:#1f2328; line-height:1.5; }"
-    " .wrap { max-width:720px; margin:0 auto; padding:24px 16px; }"
-    " .header { padding:8px 4px 20px; border-bottom:1px solid #e3e6ea; }"
-    " .header h1 { margin:0; font-size:22px; font-weight:700; letter-spacing:-0.01em; }"
-    " .header .meta { margin-top:4px; font-size:13px; color:#57606a; }"
-    " .paper { background:#fff; border:1px solid #e3e6ea; border-radius:10px;"
-    " padding:16px 18px; margin:14px 0; }"
-    " .paper .title { font-size:16px; font-weight:600; line-height:1.35; margin:0 0 6px; }"
-    " .paper .title a { color:#0969da; text-decoration:none; }"
-    " .paper .authors { font-size:13px; color:#57606a; margin:0 0 8px; }"
-    " .paper .badges { font-size:12px; color:#57606a; margin:0 0 10px; }"
-    " .badge { display:inline-block; padding:2px 8px; margin-right:6px;"
-    " background:#eef2f6; border-radius:999px; color:#324155; font-weight:500; }"
-    " .badge.kw { background:#ddf4ff; color:#0550ae; }"
-    " .badge.cat { background:#f1f5e9; color:#4a5d23; }"
-    " .badge.score { background:#fff3cd; color:#6b4d00; }"
-    " .paper .abstract { font-size:14px; color:#1f2328; margin:6px 0 10px; }"
-    " .paper .links a { font-size:13px; color:#0969da; text-decoration:none; margin-right:14px; }"
-    " .footer { text-align:center; font-size:12px; color:#8b949e; padding:18px 4px 8px; }"
-    " .footer a { color:#8b949e; text-decoration:underline; }"
-)
-
-
-def _plural(n: int, singular: str, plural=None) -> str:
-    return singular if n == 1 else (plural or singular + "s")
-
-
-def _truncate(text: str, max_chars: int) -> str:
-    text = " ".join((text or "").split())
-    if max_chars <= 0 or len(text) <= max_chars:
-        return text
-    cut = text[: max_chars].rsplit(" ", 1)[0].rstrip(",;:.-")
-    return f"{cut}…"
+# domain -> (host, port, security, password hint)
+PRESETS = {
+    "gmail.com": ("smtp.gmail.com", 587, "starttls", "a Google App Password"),
+    "googlemail.com": ("smtp.gmail.com", 587, "starttls", "a Google App Password"),
+    "icloud.com": ("smtp.mail.me.com", 587, "starttls", "an Apple app-specific password"),
+    "me.com": ("smtp.mail.me.com", 587, "starttls", "an Apple app-specific password"),
+    "mac.com": ("smtp.mail.me.com", 587, "starttls", "an Apple app-specific password"),
+    "yahoo.com": ("smtp.mail.yahoo.com", 465, "ssl", "a Yahoo app password"),
+    "aol.com": ("smtp.aol.com", 465, "ssl", "an AOL app password"),
+    "qq.com": ("smtp.qq.com", 465, "ssl", "the QQ Mail authorization code (授权码)"),
+    "foxmail.com": ("smtp.qq.com", 465, "ssl", "the QQ Mail authorization code (授权码)"),
+    "163.com": ("smtp.163.com", 465, "ssl", "the 163 Mail authorization code (授权码)"),
+    "126.com": ("smtp.126.com", 465, "ssl", "the 126 Mail authorization code (授权码)"),
+    "yeah.net": ("smtp.yeah.net", 465, "ssl", "the Yeah.net authorization code (授权码)"),
+    "zoho.com": ("smtp.zoho.com", 465, "ssl", "a Zoho app-specific password"),
+    "zoho.eu": ("smtp.zoho.eu", 465, "ssl", "a Zoho app-specific password"),
+    "fastmail.com": ("smtp.fastmail.com", 465, "ssl", "a Fastmail app password"),
+    "fastmail.fm": ("smtp.fastmail.com", 465, "ssl", "a Fastmail app password"),
+    "gmx.com": ("mail.gmx.com", 587, "starttls", _GMX_HINT),
+    "gmx.net": ("mail.gmx.net", 587, "starttls", _GMX_HINT),
+    "gmx.de": ("mail.gmx.net", 587, "starttls", _GMX_HINT),
+    "yandex.com": ("smtp.yandex.com", 465, "ssl", "a Yandex app password"),
+    "yandex.ru": ("smtp.yandex.ru", 465, "ssl", "a Yandex app password"),
+}
+MICROSOFT_DOMAINS = {"outlook.com", "hotmail.com", "live.com", "msn.com", "outlook.de", "hotmail.co.uk"}
+OUTLOOK_NOTE = ("Microsoft no longer accepts passwords or app passwords for SMTP on Outlook.com/Hotmail "
+                "accounts (basic authentication was switched off in September 2024), so ArxivDaily can't "
+                "send from them. Use another address to send, e.g. a Gmail account, and keep receiving "
+                "at your Outlook address via the MAIL_TO secret.")
 
 
-def _format_authors(authors: Sequence[str], max_show: int) -> str:
-    if not authors:
-        return ""
-    if max_show <= 0 or len(authors) <= max_show:
-        return ", ".join(authors)
-    return ", ".join(authors[:max_show]) + f", et al. (+{len(authors) - max_show})"
+class SetupError(Exception):
+    """Something the user has to change in their settings (shown without a traceback)."""
 
 
-def render_html(papers: Sequence[Paper], date_label: str, abstract_chars: int, max_authors: int) -> str:
-    cards = []
-    for i, p in enumerate(papers, start=1):
-        authors_html = escape(_format_authors(p.authors, max_authors))
-        abstract_html = escape(_truncate(p.summary, abstract_chars))
-        kw_badges = "".join(
-            f'<span class="badge kw">{escape(k)}</span>' for k in p.matched_keywords
-        )
-        cat_badge = f'<span class="badge cat">{escape(p.primary_category)}</span>'
-        score_badge = f'<span class="badge score">score {p.score:g}</span>'
-        updated = p.updated.strftime("%Y-%m-%d")
-        cards.append(
-            '<div class="paper">'
-            f'<p class="title"><a href="{escape(p.abs_url)}">{i}. {escape(p.title)}</a></p>'
-            f'<p class="authors">{authors_html}</p>'
-            f'<p class="badges">{cat_badge}{kw_badges}{score_badge}'
-            f'<span style="margin-left:6px;">{escape(updated)}</span></p>'
-            f'<p class="abstract">{abstract_html}</p>'
-            f'<p class="links">'
-            f'<a href="{escape(p.abs_url)}">abs</a>'
-            f'<a href="{escape(p.pdf_url)}">pdf</a>'
-            f'<a href="https://arxiv.org/list/{escape(p.primary_category)}/recent">category</a>'
-            f'</p></div>'
-        )
-    body = "\n".join(cards) if cards else "<p>No new matching papers.</p>"
-    n = len(papers)
-    return (
-        '<!doctype html><html><head><meta charset="utf-8">'
-        f'<style>{_CSS}</style></head><body>'
-        f'<div class="wrap">'
-        f'<div class="header"><h1>ArxivDaily &middot; {n} new {_plural(n, "paper")}</h1>'
-        f'<div class="meta">Listing date: {escape(date_label)}</div></div>'
-        f'{body}'
-        f'<div class="footer">Curated automatically from the arXiv API. '
-        f'<a href="https://arxiv.org/">arxiv.org</a></div>'
-        f'</div></body></html>'
-    )
-
-
-def render_text(papers: Sequence[Paper], date_label: str, abstract_chars: int, max_authors: int) -> str:
-    n = len(papers)
-    lines = [f"ArxivDaily - {n} new {_plural(n, 'paper')} ({date_label})", "=" * 60, ""]
-    for i, p in enumerate(papers, start=1):
-        lines.append(f"{i}. {p.title}")
-        authors = _format_authors(p.authors, max_authors)
-        if authors:
-            lines.append(f"   {authors}")
-        kw = ", ".join(p.matched_keywords) if p.matched_keywords else "-"
-        lines.append(
-            f"   [{p.primary_category}] keywords: {kw}  score: {p.score:g}  "
-            f"updated: {p.updated.strftime('%Y-%m-%d')}"
-        )
-        lines.append(f"   {_truncate(p.summary, abstract_chars)}")
-        lines.append(f"   abs: {p.abs_url}")
-        lines.append(f"   pdf: {p.pdf_url}")
-        lines.append("")
-    lines.append("--")
-    lines.append("Curated automatically from the arXiv API (arxiv.org).")
-    return "\n".join(lines)
-
-
+@dataclass
 class SmtpConfig:
-    """Resolved SMTP settings, sourced from environment variables.
+    host: str
+    port: int
+    username: str
+    password: str
+    from_address: str
+    security: str           # starttls | ssl | none
+    detected: bool = False  # host/port came from PRESETS
+    password_hint: str = ""
 
-    Recognised env vars:
-      SMTP_HOST      required
-      SMTP_PORT      default 587
-      SMTP_USERNAME  required
-      SMTP_PASSWORD  required
-      SMTP_FROM      optional; defaults to SMTP_USERNAME
-      SMTP_SECURITY  one of: starttls (default), ssl, none
-    """
-
-    def __init__(self, host, port, username, password, from_address, security):
-        self.host = host
-        self.port = port
-        self.username = username
-        self.password = password
-        self.from_address = from_address
-        self.security = security.lower()
+    def describe(self) -> str:
+        sec = {"starttls": "STARTTLS", "ssl": "SSL", "none": "no encryption"}[self.security]
+        return f"{self.host}:{self.port} ({sec})" + (", detected automatically" if self.detected else "")
 
     @classmethod
     def from_env(cls, default_from: str = "") -> "SmtpConfig":
-        host = os.environ.get("SMTP_HOST", "").strip()
-        port = int(os.environ.get("SMTP_PORT", "587").strip() or "587")
         user = os.environ.get("SMTP_USERNAME", "").strip()
-        pw = os.environ.get("SMTP_PASSWORD", "")
-        from_addr = (os.environ.get("SMTP_FROM") or default_from or user).strip()
-        security = (os.environ.get("SMTP_SECURITY") or "starttls").strip().lower()
-        missing = [
-            k for k, v in {
-                "SMTP_HOST": host,
-                "SMTP_USERNAME": user,
-                "SMTP_PASSWORD": pw,
-            }.items() if not v
-        ]
+        password = os.environ.get("SMTP_PASSWORD", "").strip()
+        missing = [name for name, value in (("SMTP_USERNAME", user), ("SMTP_PASSWORD", password)) if not value]
         if missing:
-            raise RuntimeError(
-                "Missing required SMTP environment variables: " + ", ".join(missing)
-            )
-        if security not in {"starttls", "ssl", "none"}:
-            raise RuntimeError(f"SMTP_SECURITY must be starttls|ssl|none, got {security!r}")
-        return cls(host, port, user, pw, from_addr, security)
+            raise SetupError(
+                "Email isn't set up yet: missing " + " and ".join(missing) + ". On GitHub, add them under "
+                "Settings > Secrets and variables > Actions > New repository secret; on your own computer, "
+                "put them in a .env file (copy .env.example). SMTP_USERNAME is your full email address and "
+                "SMTP_PASSWORD an app password (see docs/setup-guide.md).")
+        domain = user.rsplit("@", 1)[-1].lower() if "@" in user else ""
+        preset = PRESETS.get(domain)
+        host = os.environ.get("SMTP_HOST", "").strip()
+        if not host and domain in MICROSOFT_DOMAINS:
+            raise SetupError(OUTLOOK_NOTE)
+        if not host and not preset:
+            raise SetupError(
+                f"Can't tell which mail server to use for {'@' + domain if domain else user!r}. "
+                "Add an SMTP_HOST secret with your provider's SMTP server (for example smtp.example.com) "
+                "and, if needed, SMTP_PORT.")
+        detected = not host
+        host = host or preset[0]
+        port_raw = os.environ.get("SMTP_PORT", "").strip()
+        if port_raw:
+            if not port_raw.isdigit():
+                raise SetupError(f"SMTP_PORT must be a number like 465 or 587 (got {port_raw!r}).")
+            port = int(port_raw)
+        else:
+            port = preset[1] if (preset and detected) else 587
+        security = os.environ.get("SMTP_SECURITY", "").strip().lower()
+        if not security:
+            security = "ssl" if port == 465 else "starttls"
+        if security not in ("starttls", "ssl", "none"):
+            raise SetupError(f"SMTP_SECURITY must be starttls, ssl or none (got {security!r}).")
+        if domain in ("gmail.com", "googlemail.com"):
+            password = password.replace(" ", "")     # Google shows app passwords as "abcd efgh ijkl mnop"
+        from_addr = (os.environ.get("SMTP_FROM", "").strip() or default_from or user).strip()
+        hint = preset[3] if preset else ""
+        return cls(host, port, user, password, from_addr, security, detected, hint)
 
 
 def _msgid_domain(from_address: str) -> str:
-    """Pick a safe domain for the Message-ID header.
-
-    Falls back to ``arxivdaily.local`` if the address is missing or doesn't
-    contain an ``@`` (otherwise the Message-ID would be malformed).
-    """
+    """Pick a safe domain for the Message-ID header (fallback: arxivdaily.local)."""
     if "@" in from_address:
         domain = from_address.rsplit("@", 1)[1].strip()
         if domain:
@@ -186,75 +133,143 @@ def _msgid_domain(from_address: str) -> str:
     return "arxivdaily.local"
 
 
-def build_message(*, subject, html, text, from_name, from_address, recipients) -> EmailMessage:
+def build_message(*, subject: str, html: str, text: str, from_name: str, from_address: str,
+                  to: str) -> EmailMessage:
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = formataddr((from_name, from_address))
-    msg["To"] = ", ".join(recipients)
+    msg["To"] = to
+    msg["Date"] = formatdate(usegmt=True)
     msg["Message-ID"] = make_msgid(domain=_msgid_domain(from_address))
+    msg["Auto-Submitted"] = "auto-generated"     # tells vacation responders not to reply
+    msg["X-Mailer"] = f"ArxivDaily/{__version__}"
     msg.set_content(text)
     msg.add_alternative(html, subtype="html")
     return msg
 
 
-def send(message: EmailMessage, recipients: Sequence[str], smtp: SmtpConfig) -> None:
-    log.info("connecting to %s:%d (%s)", smtp.host, smtp.port, smtp.security)
+def _explain(err: Exception, smtp: SmtpConfig) -> str:
+    where = f"{smtp.host}:{smtp.port}"
+    if isinstance(err, smtplib.SMTPAuthenticationError):
+        detail = (err.smtp_error or b"").decode("utf-8", "replace")
+        if "basic authentication is disabled" in detail.lower() or "5.7.139" in detail:
+            return OUTLOOK_NOTE
+        if "5.7.30" in detail or "basic authentication is not supported" in detail.lower():
+            return (f"{smtp.host} no longer accepts passwords for sending (Microsoft 365 is switching off "
+                    "password-based SMTP for work and university accounts). Send from another address, e.g. a "
+                    "Gmail account, and keep receiving at this one via the MAIL_TO secret.")
+        hint = smtp.password_hint
+        if not hint:
+            password = ("SMTP_PASSWORD must be the password for SMTP access, which many providers issue "
+                        "separately as an \"app password\"")
+        elif hint.startswith("your "):            # GMX accepts the normal password
+            password = f"SMTP_PASSWORD must be {hint}"
+        else:
+            password = f"SMTP_PASSWORD must be {hint}, not your normal login password"
+        how = ("Turn on 2-Step Verification, then create an app password at "
+               "https://myaccount.google.com/apppasswords" if smtp.host == "smtp.gmail.com" else
+               "Step 2 of docs/setup-guide.md shows how to get it")
+        return (f"{smtp.host} rejected the username or password ({err.smtp_code}). SMTP_USERNAME must be the "
+                f"full email address and {password}. {how}.")
+    if isinstance(err, ssl.SSLError):
+        return (f"Encryption handshake with {where} failed ({err.reason or err}). Port 465 needs "
+                "SMTP_SECURITY=ssl and port 587 needs starttls; remove SMTP_SECURITY to auto-detect.")
+    if isinstance(err, smtplib.SMTPNotSupportedError):
+        return f"{where} doesn't support STARTTLS. Try SMTP_PORT=465 (SSL)."
+    if isinstance(err, smtplib.SMTPSenderRefused):
+        return (f"{smtp.host} refused the From address. Most providers only let you send as your own "
+                "address: remove SMTP_FROM / email.from_address or set it to your account's address.")
+    if isinstance(err, socket.gaierror):
+        return f"Can't find the mail server {smtp.host!r}. Check SMTP_HOST for typos."
+    if isinstance(err, smtplib.SMTPResponseException) and not isinstance(err, smtplib.SMTPConnectError):
+        detail = err.smtp_error.decode("utf-8", "replace") if isinstance(err.smtp_error, bytes) else str(err.smtp_error)
+        return (f"{smtp.host} didn't accept the message ({err.smtp_code} {' '.join(detail.split())}). "
+                "This is usually the provider's spam filter or a sending limit.")
+    if isinstance(err, OSError):              # timeouts, refused connections, hang-ups (smtplib errors included)
+        return (f"Couldn't connect to {where} ({err.__class__.__name__}: {err}). Check SMTP_HOST and "
+                "SMTP_PORT (usually 465 or 587).")
+    return f"Sending through {where} failed: {err}"
+
+
+def _connect(smtp: SmtpConfig) -> smtplib.SMTP:
     context = ssl.create_default_context()
     if smtp.security == "ssl":
-        with smtplib.SMTP_SSL(smtp.host, smtp.port, context=context, timeout=30) as s:
-            s.login(smtp.username, smtp.password)
-            s.send_message(message, from_addr=smtp.from_address, to_addrs=list(recipients))
+        server: smtplib.SMTP = smtplib.SMTP_SSL(smtp.host, smtp.port, context=context, timeout=30)
     else:
-        with smtplib.SMTP(smtp.host, smtp.port, timeout=30) as s:
-            s.ehlo()
+        server = smtplib.SMTP(smtp.host, smtp.port, timeout=30)
+    try:
+        if smtp.security != "ssl":
+            server.ehlo()
             if smtp.security == "starttls":
-                s.starttls(context=context)
-                s.ehlo()
-            s.login(smtp.username, smtp.password)
-            s.send_message(message, from_addr=smtp.from_address, to_addrs=list(recipients))
-    log.info("sent to %d recipient(s)", len(recipients))
+                server.starttls(context=context)
+                server.ehlo()
+        server.login(smtp.username, smtp.password)
+    except Exception:
+        server.close()
+        raise
+    return server
 
 
-def send_digest(
-    papers: List[Paper],
-    *,
-    recipients: Sequence[str],
-    subject: str,
-    from_name: str,
-    from_address: str,
-    abstract_chars: int,
-    max_authors: int,
-    date_label=None,
-    smtp: "SmtpConfig | None" = None,
-    dry_run: bool = False,
-    output_dir=None,
-) -> str:
-    """Build + (optionally) send the digest. Returns the rendered HTML."""
-    if date_label is None:
-        date_label = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
-    html = render_html(papers, date_label, abstract_chars, max_authors)
-    text = render_text(papers, date_label, abstract_chars, max_authors)
+def verify_login(smtp: SmtpConfig) -> None:
+    """Log in and out without sending anything (used by --check)."""
+    try:
+        server = _connect(smtp)
+        server.quit()
+    except Exception as e:  # noqa: BLE001
+        raise SetupError(_explain(e, smtp)) from None
 
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-        with open(os.path.join(output_dir, "preview.html"), "w", encoding="utf-8") as f:
-            f.write(html)
-        with open(os.path.join(output_dir, "preview.txt"), "w", encoding="utf-8") as f:
-            f.write(text)
 
-    if dry_run:
-        log.info("DRY RUN - not sending. Recipients would have been: %s", list(recipients))
-        return html
+def send_all(*, recipients: Sequence[str], subject: str, html: str, text: str, from_name: str,
+             smtp: SmtpConfig) -> Tuple[List[str], List[str]]:
+    """Send one copy per recipient over a single connection.
 
-    smtp = smtp or SmtpConfig.from_env(default_from=from_address or "")
-    effective_from = from_address or smtp.from_address
-    message = build_message(
-        subject=subject,
-        html=html,
-        text=text,
-        from_name=from_name,
-        from_address=effective_from,
-        recipients=recipients,
-    )
-    send(message, recipients, smtp)
-    return html
+    Returns (delivered, failed). Raises SetupError if nothing could be sent.
+    """
+    log.info("connecting to %s", smtp.describe())
+    try:
+        server = _connect(smtp)
+    except Exception as e:  # noqa: BLE001
+        raise SetupError(_explain(e, smtp)) from None
+    delivered: List[str] = []
+    failed: List[str] = []
+    first_error = None
+    try:
+        for to in recipients:
+            msg = build_message(subject=subject, html=html, text=text, from_name=from_name,
+                                from_address=smtp.from_address, to=to)
+            for attempt in (1, 2):
+                try:
+                    server.send_message(msg, from_addr=smtp.from_address, to_addrs=[to])
+                    delivered.append(to)
+                except smtplib.SMTPServerDisconnected as e:
+                    if attempt == 1:                  # the server hung up: reconnect once and retry
+                        try:
+                            server = _connect(smtp)
+                            continue
+                        except Exception as reconnect_error:  # noqa: BLE001
+                            e = reconnect_error
+                    failed.append(to)
+                    first_error = first_error or e
+                except smtplib.SMTPSenderRefused as e:
+                    if not delivered:                 # same answer for everyone: stop right away
+                        raise SetupError(_explain(e, smtp)) from None
+                    failed.append(to)
+                    first_error = first_error or e
+                except smtplib.SMTPRecipientsRefused:
+                    failed.append(to)
+                except (smtplib.SMTPException, OSError) as e:
+                    failed.append(to)
+                    first_error = first_error or e
+                break
+    finally:
+        try:
+            server.quit()
+        except Exception:  # noqa: BLE001
+            pass
+    if not delivered:
+        if first_error is not None:
+            raise SetupError(_explain(first_error, smtp))
+        whom = "the recipient address" if len(recipients) == 1 else f"all {len(recipients)} recipient addresses"
+        raise SetupError(f"{smtp.host} refused {whom}. Check the MAIL_TO secret for typos.")
+    log.info("sent to %d of %d recipients", len(delivered), len(recipients))
+    return delivered, failed

@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ArxivDaily</title>
+<meta name="description" content="New arXiv papers on my research topics, collected after every arXiv announcement by ArxivDaily.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<script>
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem("arxivdaily-theme"); } catch (e) {}
+    if (t !== "light" && t !== "dark") t = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", t);
+  })();
+</script>
+<style>
+  :root {
+    --bg: #FFFFFF;
+    --ink: #1C2230;
+    --body: #2C3443;
+    --graphite: #5B6474;
+    --faint: #6F7786;
+    --rule: #E7E9EE;
+    --rule-strong: #1C2230;
+    --link: #1F4FB0;
+    --field: #FFFFFF;
+    --notice: #1C2230;
+    --notice-ink: #FFFFFF;
+    --mark-ink: #1C2230;
+    --hl-0: #FFEC8A; --hl-1: #BDF0C8; --hl-2: #FFD1E6; --hl-3: #CBE6FF; --hl-4: #FFDAB3; --hl-5: #E2D6FF;
+    --serif: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --measure: 47rem;
+    --bar-h: 108px;
+  }
+  [data-theme="dark"] {
+    --bg: #15181E;
+    --ink: #E9ECF1;
+    --body: #C9CED8;
+    --graphite: #A0A8B6;
+    --faint: #8B93A2;
+    --rule: #2A2F39;
+    --rule-strong: #E9ECF1;
+    --link: #93B6FF;
+    --field: #1C2028;
+    --notice: #E9ECF1;
+    --notice-ink: #15181E;
+    --hl-0: #F3DC6A; --hl-1: #A4E0B2; --hl-2: #F1B6D0; --hl-3: #B0D2F4; --hl-4: #F2C493; --hl-5: #CBBCF2;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--sans); }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  button { font: inherit; }
+  :focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 3px; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .skip { position: absolute; left: -9999px; top: 8px; z-index: 20; background: var(--bg); color: var(--ink); padding: 8px 12px; border: 2px solid var(--link); border-radius: 6px; }
+  .skip:focus { left: 12px; }
+  .wrap { max-width: var(--measure); margin: 0 auto; padding: 0 24px; }
+
+  /* Top bar: brand, search, theme, topic filters */
+  .bar { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--rule); }
+  .bar-row { display: flex; align-items: center; gap: 14px; padding-top: 12px; padding-bottom: 10px; }
+  .brand { display: inline-flex; align-items: center; gap: 9px; font: 700 19px/1 var(--serif); color: var(--ink); white-space: nowrap; }
+  .brand:hover { text-decoration: none; }
+  .brand img { width: 22px; height: 22px; }
+  .search { position: relative; flex: 1; min-width: 0; }
+  .search input { width: 100%; height: 38px; padding: 0 34px 0 34px; border: 1px solid var(--rule); border-radius: 8px; background: var(--field); color: var(--ink); font: 15px var(--sans); }
+  .search input::placeholder { color: var(--faint); }
+  .search input:focus { outline: none; border-color: var(--link); box-shadow: 0 0 0 3px color-mix(in srgb, var(--link) 22%, transparent); }
+  .search input::-webkit-search-cancel-button { display: none; }
+  .search .icon { position: absolute; left: 11px; top: 11px; width: 16px; height: 16px; color: var(--faint); pointer-events: none; }
+  .search kbd { position: absolute; right: 8px; top: 8px; font: 12px/20px var(--sans); color: var(--faint); border: 1px solid var(--rule); border-radius: 4px; padding: 0 6px; }
+  .search .clear-q { position: absolute; right: 6px; top: 6px; width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--graphite); cursor: pointer; display: none; }
+  .search.has-q .clear-q { display: block; }
+  .search.has-q kbd { display: none; }
+  .icon-btn { flex: none; width: 38px; height: 38px; border: 1px solid var(--rule); border-radius: 8px; background: transparent; color: var(--graphite); display: grid; place-items: center; cursor: pointer; }
+  .icon-btn:hover { color: var(--ink); }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .topics { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding-bottom: 12px; }
+  .topic { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 2px 0; color: var(--graphite); font-size: 13.5px; line-height: 1.5; cursor: pointer; white-space: nowrap; }
+  .topic .label { background: var(--hl); color: var(--mark-ink); border-radius: 3px; padding: 1px 6px; }
+  .topic .n { font-variant-numeric: tabular-nums; }
+  .topic[aria-pressed="true"] .label { box-shadow: 0 0 0 2px var(--ink); }
+  .topics.filtering .topic[aria-pressed="false"] { opacity: .5; }
+  .text-btn { border: 0; background: none; padding: 0; color: var(--link); cursor: pointer; font-size: 13.5px; }
+  .text-btn:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+  /* Days */
+  .day { scroll-margin-top: calc(var(--bar-h) + 8px); }
+  .day-head { position: sticky; top: var(--bar-h); z-index: 2; background: var(--bg); display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-top: 30px; padding: 14px 0 10px; border-bottom: 2px solid var(--rule-strong); }
+  .day-head h2 { margin: 0; font: 700 21px/1.2 var(--serif); }
+  .day-head .count { margin: 0; color: var(--graphite); font-size: 13.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .day-head .lede { display: none; }
+  .day-head.hero { position: static; display: block; margin-top: 0; padding: 40px 0 20px; }
+  .day-head.hero h2 { font-size: clamp(30px, 5.2vw, 44px); line-height: 1.08; letter-spacing: -0.015em; }
+  .day-head.hero .count { display: none; }
+  .day-head.hero .lede { display: block; margin: 12px 0 0; max-width: 40rem; color: var(--graphite); font-size: 15px; line-height: 1.55; }
+
+  /* Papers */
+  .paper { display: grid; grid-template-columns: 34px minmax(0, 1fr); padding: 22px 0 20px; border-bottom: 1px solid var(--rule); }
+  .paper:last-child { border-bottom: 0; }
+  .rank { font: 700 15px/27px var(--serif); color: var(--faint); font-variant-numeric: tabular-nums; }
+  .title { margin: 0; font: 700 19px/1.4 var(--serif); }
+  .title a { color: var(--ink); }
+  .authors { margin: 6px 0 0; color: var(--graphite); font-size: 13.5px; line-height: 1.5; }
+  .abstract { margin: 10px 0 0; color: var(--body); font: 16px/1.62 var(--serif); overflow-wrap: anywhere; }
+  .abstract.clamped { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; margin-top: 12px; color: var(--graphite); font-size: 13.5px; }
+  .meta .pdf { font-weight: 600; }
+  mark { color: var(--mark-ink); border-radius: 2px; padding: 0 2px; margin: 0 -2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  mark.h0 { background: var(--hl-0); } mark.h1 { background: var(--hl-1); } mark.h2 { background: var(--hl-2); }
+  mark.h3 { background: var(--hl-3); } mark.h4 { background: var(--hl-4); } mark.h5 { background: var(--hl-5); }
+  .paper.fresh .rank { animation: fresh 2.4s ease-out 1; border-radius: 3px; }
+  @keyframes fresh { 0%, 35% { background: var(--hl-0); color: var(--mark-ink); } 100% { background: transparent; } }
+
+  /* Messages */
+  .more { padding: 30px 0 10px; color: var(--graphite); font-size: 14px; text-align: center; }
+  .more p { margin: 0 0 12px; }
+  .btn { border: 1px solid var(--rule); border-radius: 8px; background: var(--bg); color: var(--ink); padding: 8px 14px; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .btn:hover { border-color: var(--graphite); }
+  .notice { position: fixed; left: 50%; top: calc(var(--bar-h) + 14px); z-index: 6; transform: translateX(-50%); border: 0; border-radius: 999px; background: var(--notice); color: var(--notice-ink); padding: 9px 18px; font-weight: 600; font-size: 14px; box-shadow: 0 8px 28px rgba(15, 20, 30, .22); cursor: pointer; }
+  .notice[hidden] { display: none; }
+  .empty { padding: 56px 0 24px; max-width: 36rem; }
+  .empty h2 { margin: 0 0 10px; font: 700 28px/1.2 var(--serif); }
+  .empty p { margin: 0 0 12px; color: var(--graphite); }
+  footer { margin-top: 44px; padding: 22px 0 44px; border-top: 1px solid var(--rule); color: var(--graphite); font-size: 13px; }
+  footer p { margin: 0 0 6px; }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px; }
+    .bar-row { gap: 10px; }
+    .brand span { display: none; }
+    .search kbd { display: none; }
+    .topics { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 10px; margin-right: -16px; padding-right: 16px; }
+    .topics::-webkit-scrollbar { display: none; }
+    .paper { grid-template-columns: 26px minmax(0, 1fr); }
+    .title { font-size: 18px; }
+    .abstract { font-size: 15.5px; }
+    .day-head.hero { padding-top: 28px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#feed">Skip to papers</a>
+<header class="bar" id="bar">
+  <div class="wrap">
+    <div class="bar-row">
+      <a class="brand" href="./" aria-label="ArxivDaily home"><img src="favicon.svg" alt=""><span>ArxivDaily</span></a>
+      <label class="search" id="search">
+        <span class="visually-hidden">Search papers</span>
+        <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4.5 4.5" stroke-linecap="round"/></svg>
+        <input id="q" type="search" placeholder="Search titles, authors, abstracts" autocomplete="off" spellcheck="false">
+        <kbd aria-hidden="true">/</kbd>
+        <button class="clear-q" id="clear-q" type="button" aria-label="Clear search">✕</button>
+      </label>
+      <button class="icon-btn" id="theme" type="button" aria-label="Switch to dark theme">
+        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 2.5a7.5 7.5 0 1 0 0 15V2.5Z"/><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      </button>
+    </div>
+    <div class="topics" id="topics" role="group" aria-label="Filter by topic"></div>
+  </div>
+</header>
+<button class="notice" id="notice" type="button" hidden></button>
+<main class="wrap">
+  <h1 class="visually-hidden">ArxivDaily: new arXiv papers on my topics</h1>
+  <div id="feed" tabindex="-1"></div>
+  <div class="more" id="more" aria-live="polite"></div>
+  <div id="sentinel" aria-hidden="true"></div>
+</main>
+<footer class="wrap" id="footer">
+  <p id="updated"></p>
+  <p>Paper data from arXiv. Thank you to arXiv for use of its open access interoperability. ArxivDaily is not affiliated with arXiv.</p>
+  <p id="source-link"></p>
+</footer>
+<p class="visually-hidden" id="status" role="status" aria-live="polite"></p>
+
+<script>
+(() => {
+  "use strict";
+
+  const DATA = "data/";
+  const SUPPORTED_DATA_VERSION = 1;
+  const POLL_MS = 5 * 60 * 1000;
+  const RETRY_SECONDS = [5, 15, 30, 60];
+  const HIGHLIGHTERS = 6;
+
+  const $ = (id) => document.getElementById(id);
+  const feed = $("feed"), more = $("more"), notice = $("notice"), input = $("q"), topicsBox = $("topics");
+
+  const state = {
+    index: null,          // data/index.json
+    days: [],             // index.days, newest first
+    next: 0,              // index into days of the next day to load
+    loading: false,
+    retry: 0,
+    retryTimer: 0,
+    backoffUntil: 0,      // after a failed load, scrolling waits for the retry timer
+    papers: new Map(),    // id -> { data, el, day, hay }
+    sections: new Map(),  // date -> { el, head, list, total }
+    patterns: [],         // [{ kw, re }]
+    query: "",
+    terms: [],
+    topics: new Set(),    // keywords selected as filters
+    pending: null,        // newer index waiting to be shown
+    checking: false,
+    starting: false,
+  };
+
+  // ---------------------------------------------------------------- utils
+  const store = {
+    get(k, s = localStorage) { try { return s.getItem(k); } catch (e) { return null; } },
+    set(k, v, s = localStorage) { try { s.setItem(k, v); } catch (e) {} },
+    del(k, s = localStorage) { try { s.removeItem(k); } catch (e) {} },
+  };
+  const session = (() => { try { return sessionStorage; } catch (e) { return null; } })();
+
+  function h(tag, props, ...kids) {
+    const node = document.createElement(tag);
+    if (props) for (const [k, v] of Object.entries(props)) {
+      if (v == null || v === false) continue;
+      if (k === "class") node.className = v;
+      else if (k === "text") node.textContent = v;
+      else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+      else node.setAttribute(k, v === true ? "" : v);
+    }
+    for (const kid of kids) if (kid != null && kid !== false) node.append(kid);
+    return node;
+  }
+
+  async function getJSON(path, fresh) {
+    // Fresh requests carry a unique query string so neither the browser nor
+    // GitHub's CDN (which caches for 10 minutes) can answer with an old copy.
+    const url = DATA + path + (fresh ? (path.includes("?") ? "&" : "?") + "t=" + Date.now() : "");
+    const res = await fetch(url, { cache: fresh ? "no-store" : "default" });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  }
+
+  const locale = (navigator.language || "en").toLowerCase().startsWith("en") ? navigator.language : "en-GB";
+  const dateFmt = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  const formatDay = (iso) => {
+    const d = new Date(iso + "T00:00:00Z");
+    return isNaN(d) ? iso : dateFmt.format(d);
+  };
+  const rtf = typeof Intl.RelativeTimeFormat === "function" ? new Intl.RelativeTimeFormat("en", { numeric: "auto" }) : null;
+  function ago(iso) {
+    const t = Date.parse(iso);
+    if (!t || !rtf) return "";
+    const s = Math.round((t - Date.now()) / 1000);
+    const units = [["day", 86400], ["hour", 3600], ["minute", 60]];
+    for (const [u, sec] of units) if (Math.abs(s) >= sec) return rtf.format(Math.round(s / sec), u);
+    return "just now";
+  }
+  const plural = (n, w, many) => `${n.toLocaleString("en")} ${n === 1 ? w : (many || w + "s")}`;
+  const humanList = (items, limit = 4) => {
+    items = items.slice();
+    if (items.length > limit) items = items.slice(0, limit).concat(`${items.length - limit} more`);
+    return items.length <= 1 ? items.join("") : items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
+  };
+  function say(msg) { $("status").textContent = msg; }
+
+  // ------------------------------------------------- keyword highlighting
+  // Mirrors src/relevance.py so the site highlights exactly what was matched.
+  const esc = (s) => s.replace(/[\\^$.*+?()[\]{}|\/]/g, "\\$&");
+  function lastWord(tok) {
+    const low = tok.toLowerCase(), e = esc(tok);
+    if (!/^\p{L}+$/u.test(tok) || tok.length < 3) return e;
+    if (low.endsWith("ies") && low.length > 4) return esc(tok.slice(0, -3)) + "(?:y|ies)";
+    if (low.endsWith("es") && low.length > 4) return `(?:${esc(tok.slice(0, -2))}(?:es)?|${esc(tok.slice(0, -1))}s?)`;
+    if (low.endsWith("is") && low.length > 4) return esc(tok.slice(0, -2)) + "(?:is|es)";
+    if (/(ss|us|as|x|z|ch|sh)$/.test(low)) return e + "(?:es)?";
+    if (low.endsWith("s")) return esc(tok.slice(0, -1)) + "s?";
+    if (low.endsWith("y") && !"aeiou".includes(low[low.length - 2])) return esc(tok.slice(0, -1)) + "(?:y|ies)";
+    return e + "s?";
+  }
+  function makePattern(kw) {
+    const parts = kw.trim().split(/[\s\-\u2010-\u2015_\/]+/u).filter(Boolean);
+    if (!parts.length) return null;
+    const body = parts.slice(0, -1).map(esc).concat(lastWord(parts[parts.length - 1])).join("[\\s\\-\\u2010-\\u2015_\\/]*");
+    try { return new RegExp(`(?<![\\p{L}\\p{N}_])${body}(?![\\p{L}\\p{N}_])`, "giu"); }
+    catch (e) { return new RegExp(body, "gi"); }   // very old browsers: no lookbehind
+  }
+  function spans(text) {
+    const hits = [];
+    state.patterns.forEach(({ re }, i) => {
+      if (!re) return;
+      re.lastIndex = 0;
+      let m;
+      while ((m = re.exec(text))) {
+        if (!m[0]) { re.lastIndex++; continue; }
+        hits.push([m.index, m.index + m[0].length, i]);
+      }
+    });
+    hits.sort((a, b) => a[0] - b[0] || (b[1] - b[0]) - (a[1] - a[0]));
+    const out = [];
+    let end = -1;
+    for (const hit of hits) if (hit[0] >= end) { out.push(hit); end = hit[1]; }
+    return out;
+  }
+  function marked(text) {
+    const frag = document.createDocumentFragment();
+    let pos = 0;
+    for (const [s, e, i] of spans(text)) {
+      if (s > pos) frag.append(text.slice(pos, s));
+      frag.append(h("mark", { class: "h" + (i % HIGHLIGHTERS) }, text.slice(s, e)));
+      pos = e;
+    }
+    if (pos < text.length) frag.append(text.slice(pos));
+    return frag;
+  }
+  // When the keyword only appears late in the abstract, start the collapsed
+  // view at the sentence that contains it, so the reason for the match shows.
+  function excerptStart(paper) {
+    if (spans(paper.title).length) return 0;
+    const hit = spans(paper.abstract)[0];
+    if (!hit || hit[0] < 220) return 0;
+    const dot = paper.abstract.lastIndexOf(". ", hit[0]);
+    if (dot !== -1 && hit[0] - dot < 200) return dot + 2;
+    const space = paper.abstract.indexOf(" ", Math.max(0, hit[0] - 90));
+    return space === -1 ? 0 : space + 1;
+  }
+
+  // ------------------------------------------------------------ rendering
+  function authorsLine(authors) {
+    const p = h("p", { class: "authors" });
+    if (!authors || !authors.length) return null;
+    const max = 6;
+    if (authors.length <= max) { p.textContent = authors.join(", "); return p; }
+    p.append(authors.slice(0, max).join(", ") + " and ");
+    p.append(h("button", { class: "text-btn", type: "button", "aria-label": `Show all ${authors.length} authors`,
+      onclick: () => { p.textContent = authors.join(", "); } }, `${authors.length - max} more`));
+    return p;
+  }
+
+  function renderPaper(data, rank) {
+    const abs = `https://arxiv.org/abs/${data.id}`;
+    const start = excerptStart(data);
+    const abstractEl = h("p", { class: "abstract clamped", id: "abs-" + data.id.replace(/\W/g, "-") });
+    const showPart = () => { abstractEl.textContent = ""; if (start) abstractEl.append("…"); abstractEl.append(marked(data.abstract.slice(start))); };
+    showPart();
+    const toggle = h("button", { class: "text-btn", type: "button", "aria-expanded": "false", "aria-controls": abstractEl.id, hidden: true }, "Show full abstract");
+    toggle.addEventListener("click", () => {
+      const open = toggle.getAttribute("aria-expanded") !== "true";
+      toggle.setAttribute("aria-expanded", String(open));
+      toggle.textContent = open ? "Show less" : "Show full abstract";
+      abstractEl.classList.toggle("clamped", !open);
+      if (open) { abstractEl.textContent = ""; abstractEl.append(marked(data.abstract)); } else showPart();
+    });
+    const cats = (data.cats || []).slice(0, 3);
+    const names = (state.index && state.index.category_names) || {};
+    const el = h("article", { class: "paper", "data-id": data.id },
+      h("div", { class: "rank", "aria-hidden": "true" }, String(rank)),
+      h("div", null,
+        h("h3", { class: "title" }, h("a", { href: abs, target: "_blank", rel: "noopener" }, marked(data.title))),
+        authorsLine(data.authors),
+        abstractEl,
+        h("div", { class: "meta" },
+          h("a", { class: "pdf", href: `https://arxiv.org/pdf/${data.id}`, target: "_blank", rel: "noopener" }, "PDF"),
+          h("a", { href: abs, target: "_blank", rel: "noopener" }, "arXiv:" + data.id),
+          h("span", { title: cats.map((c) => names[c] ? `${c}: ${names[c]}` : c).join("\n") }, cats.join(", ")),
+          toggle)));
+    el._toggle = toggle;
+    el._abstract = abstractEl;
+    return el;
+  }
+
+  function revealToggles(articles) {
+    requestAnimationFrame(() => {
+      for (const a of articles) {
+        const ab = a._abstract;
+        if (ab && (ab.scrollHeight > ab.clientHeight + 2 || ab.textContent.startsWith("…"))) a._toggle.hidden = false;
+      }
+    });
+  }
+
+  function heroLede(entry, shown) {
+    const idx = state.index;
+    const cats = idx.categories && idx.categories.length ? humanList(idx.categories) : "all of arXiv";
+    const total = entry.count;
+    let text = filtering()
+      ? `${plural(shown, "paper")} of ${total} match your filters.`
+      : `${plural(total, "paper")} matched your topics in ${cats}.`;
+    const upd = idx.generated_at ? ago(idx.generated_at) : "";
+    if (upd) text += ` Updated ${upd}.`;
+    return text;
+  }
+
+  function renderSection(entry, data, { prepend = false, fresh = new Set() } = {}) {
+    const old = state.sections.get(entry.date);
+    const head = h("header", { class: "day-head" },
+      h("h2", null, h("time", { datetime: entry.date }, formatDay(entry.date))),
+      h("p", { class: "count" }),
+      h("p", { class: "lede" }));
+    const list = h("div", { class: "papers" });
+    const section = h("section", { class: "day", id: "day-" + entry.date, "aria-label": formatDay(entry.date) }, head, list);
+    const articles = [];
+    if (old) for (const [id, p] of state.papers) if (p.day === entry.date) state.papers.delete(id);
+    (data.papers || []).forEach((p, i) => {
+      const el = renderPaper(p, i + 1);
+      if (fresh.has(p.id)) el.classList.add("fresh");
+      articles.push(el);
+      list.append(el);
+      const hay = [p.title, p.abstract, (p.authors || []).join(" "), p.id, (p.cats || []).join(" ")].join(" \u0001 ").toLowerCase();
+      state.papers.set(p.id, { data: p, el, day: entry.date, hay });
+    });
+    if (old) old.el.replaceWith(section);
+    else if (prepend) feed.prepend(section);
+    else feed.append(section);
+    state.sections.set(entry.date, { el: section, head, entry, total: articles.length });
+    revealToggles(articles);
+    return section;
+  }
+
+  function markHero() {
+    const first = feed.querySelector(".day");
+    for (const s of state.sections.values()) s.head.classList.toggle("hero", s.el === first);
+  }
+
+  function renderTopics() {
+    topicsBox.textContent = "";
+    const counts = {};
+    for (const d of state.days) for (const [k, n] of Object.entries(d.kw || {})) counts[k] = (counts[k] || 0) + n;
+    (state.index.keywords || []).forEach((kw, i) => {
+      const btn = h("button", { class: "topic", type: "button", "aria-pressed": String(state.topics.has(kw)),
+        style: `--hl: var(--hl-${i % HIGHLIGHTERS})`, title: `Show only papers about ${kw}` },
+        h("span", { class: "label" }, kw), h("span", { class: "n" }, String(counts[kw] || 0)));
+      btn.addEventListener("click", () => {
+        state.topics.has(kw) ? state.topics.delete(kw) : state.topics.add(kw);
+        btn.setAttribute("aria-pressed", String(state.topics.has(kw)));
+        applyFilters();
+      });
+      topicsBox.append(btn);
+    });
+    const clear = h("button", { class: "text-btn", type: "button", id: "clear-filters", hidden: !filtering() }, "Clear filters");
+    clear.addEventListener("click", clearFilters);
+    topicsBox.append(clear);
+    topicsBox.classList.toggle("filtering", state.topics.size > 0);
+  }
+
+  // ------------------------------------------------------------- filtering
+  const filtering = () => state.terms.length > 0 || state.topics.size > 0;
+
+  function clearFilters() {
+    state.topics.clear();
+    input.value = "";
+    renderTopics();
+    setQuery("");
+  }
+
+  function applyFilters() {
+    let shown = 0;
+    const revealed = [];
+    for (const p of state.papers.values()) {
+      const okTopic = !state.topics.size || (p.data.kw || []).some((k) => state.topics.has(k));
+      const okText = state.terms.every((t) => p.hay.includes(t));
+      const visible = okTopic && okText;
+      if (visible && p.el.hidden) revealed.push(p.el);
+      p.el.hidden = !visible;
+      if (visible) shown++;
+    }
+    revealToggles(revealed.filter((el) => el._toggle.hidden));
+    for (const s of state.sections.values()) {
+      const visible = s.el.querySelectorAll(".paper:not([hidden])").length;
+      s.el.hidden = visible === 0;
+      s.head.querySelector(".count").textContent = filtering() ? `${visible} of ${s.total}` : plural(s.total, "paper");
+      s.head.querySelector(".lede").textContent = heroLede(s.entry, visible);
+    }
+    topicsBox.classList.toggle("filtering", state.topics.size > 0);
+    const clear = $("clear-filters");
+    if (clear) clear.hidden = !filtering();
+    $("search").classList.toggle("has-q", !!input.value);
+    syncUrl();
+    updateMore();
+    if (filtering()) say(`${plural(shown, "paper")} shown${state.next < state.days.length ? " so far" : ""}`);
+    maybeLoadMore();
+  }
+
+  function setQuery(q) {
+    state.query = q;
+    state.terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+    applyFilters();
+  }
+
+  function syncUrl() {
+    const params = new URLSearchParams();
+    if (state.query.trim()) params.set("q", state.query.trim());
+    if (state.topics.size) params.set("topic", [...state.topics].join("|"));
+    const url = location.pathname + (params.toString() ? "?" + params : "") + location.hash;
+    if (url !== location.pathname + location.search + location.hash) history.replaceState(null, "", url);
+  }
+
+  function readUrl() {
+    const params = new URLSearchParams(location.search);
+    const q = params.get("q") || "";
+    input.value = q;
+    state.query = q;
+    state.terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+    for (const t of (params.get("topic") || "").split("|")) if (t) state.topics.add(t);
+  }
+
+  // -------------------------------------------------------- loading days
+  function updateMore(error) {
+    more.textContent = "";
+    if (!state.index) return;
+    if (error) {
+      const wait = RETRY_SECONDS[Math.min(state.retry, RETRY_SECONDS.length - 1)];
+      more.append(h("p", null, `Couldn't load ${formatDay(state.days[state.next].date)} (${error}). Trying again in ${wait} seconds.`),
+        h("button", { class: "btn", type: "button", onclick: () => { clearTimeout(state.retryTimer); state.backoffUntil = 0; loadNext().then(() => maybeLoadMore()); } }, "Try again now"));
+      return;
+    }
+    if (state.loading) { more.append(h("p", null, `Loading ${formatDay(state.days[state.next].date)}…`)); return; }
+    if (state.next < state.days.length) {
+      if (filtering()) more.append(h("p", null, `Searching earlier days… ${state.next} of ${state.days.length} checked.`));
+      more.append(h("button", { class: "btn", type: "button", onclick: () => loadNext() }, "Load earlier days"));
+      return;
+    }
+    const shown = [...state.papers.values()].filter((p) => !p.el.hidden).length;
+    if (filtering() && shown === 0) {
+      more.append(h("p", null, state.query ? `No papers match “${state.query.trim()}”${state.topics.size ? " in the selected topics" : ""}.` : "No papers in the selected topics yet."),
+        h("button", { class: "btn", type: "button", onclick: clearFilters }, "Clear filters"));
+      return;
+    }
+    const oldest = state.days[state.days.length - 1];
+    more.append(h("p", null, state.days.length === 1
+      ? "That's everything so far. Older days will appear here as the archive grows."
+      : `That's the whole archive: ${plural(state.days.length, "day")}, back to ${formatDay(oldest.date)}.`));
+  }
+
+  async function loadNext() {
+    if (state.loading || state.next >= state.days.length) return false;
+    state.loading = true;
+    updateMore();
+    const entry = state.days[state.next];
+    try {
+      const data = await getJSON(`days/${entry.date}.json?v=${entry.rev}`, false);
+      if (!data) {
+        // The day was pruned since we read the index: refresh the index and carry on.
+        state.loading = false;
+        await checkForUpdates({ silent: true });
+        state.days = state.days.filter((d) => d.date !== entry.date);
+        updateMore();
+        maybeLoadMore();
+        return false;
+      }
+      renderSection(entry, data);
+      state.next++;
+      state.retry = 0;
+      state.backoffUntil = 0;
+      state.loading = false;
+      markHero();
+      applyFilters();
+      return true;
+    } catch (err) {
+      state.loading = false;
+      updateMore(err.message || "network error");
+      const wait = RETRY_SECONDS[Math.min(state.retry++, RETRY_SECONDS.length - 1)];
+      state.backoffUntil = Date.now() + wait * 1000;
+      clearTimeout(state.retryTimer);
+      state.retryTimer = setTimeout(() => { state.backoffUntil = 0; loadNext().then(() => maybeLoadMore()); }, wait * 1000);
+      return false;
+    }
+  }
+
+  // Keep loading while the end of the list is (nearly) visible. This is what
+  // makes the archive fill the screen without scrolling or reloading, even
+  // when filters hide most papers.
+  function nearBottom() {
+    const r = $("sentinel").getBoundingClientRect();
+    return r.top < window.innerHeight + 1500;
+  }
+  let pumping = false;
+  async function maybeLoadMore() {
+    if (pumping || Date.now() < state.backoffUntil) return;
+    pumping = true;
+    try {
+      while (!state.loading && state.next < state.days.length && nearBottom()) {
+        if (!(await loadNext())) break;
+        await new Promise(requestAnimationFrame);
+      }
+    } finally { pumping = false; }
+  }
+
+  // ---------------------------------------------------------- live updates
+  async function checkForUpdates({ silent = false } = {}) {
+    if (state.checking || !state.index) return;
+    state.checking = true;
+    try {
+      const idx = await getJSON("index.json", true);
+      if (!idx || !ownArchive(idx)) return;
+      if ((idx.version || 1) > SUPPORTED_DATA_VERSION) { showReloadNotice(); return; }
+      const loaded = new Map(state.days.slice(0, state.next).map((d) => [d.date, d.rev]));
+      const changed = idx.days.filter((d) => (loaded.has(d.date) && loaded.get(d.date) !== d.rev) ||
+        (!loaded.has(d.date) && state.days.length && d.date > state.days[0].date));
+      if (JSON.stringify(idx.keywords) !== JSON.stringify(state.index.keywords)) {
+        showReloadNotice("Your topics changed. Reload the page to see them");
+        return;
+      }
+      if (!changed.length) {
+        state.index.generated_at = idx.generated_at;
+        refreshLedes();
+        return;
+      }
+      if (silent) { adoptIndex(idx); return; }
+      // Count genuinely new papers before bothering the reader.
+      let fresh = 0;
+      const fetched = [];
+      for (const d of changed) {
+        const data = await getJSON(`days/${d.date}.json?v=${d.rev}`, false);
+        if (!data) continue;
+        fetched.push([d, data]);
+        for (const p of data.papers || []) if (!state.papers.has(p.id)) fresh++;
+      }
+      state.pending = { idx, fetched };
+      if (!fresh) { applyPending(false); return; }
+      if (atTop() && !filtering()) applyPending(true);
+      else showNotice(`Show ${plural(fresh, "new paper")}`, "apply");
+    } catch (e) {
+      /* offline or a transient error: try again at the next check */
+    } finally { state.checking = false; }
+  }
+
+  function adoptIndex(idx) {
+    const known = new Set(state.days.slice(0, state.next).map((d) => d.date));
+    state.index = idx;
+    state.patterns = (idx.keywords || []).map((kw) => ({ kw, re: makePattern(kw) }));
+    const loadedDays = idx.days.filter((d) => known.has(d.date));
+    const rest = idx.days.filter((d) => !known.has(d.date) && (!loadedDays.length || d.date < loadedDays[loadedDays.length - 1].date));
+    state.days = loadedDays.concat(rest);
+    state.next = loadedDays.length;
+    for (const [date, s] of state.sections) {
+      if (idx.days.some((d) => d.date === date)) continue;
+      s.el.remove();
+      state.sections.delete(date);
+      for (const [id, p] of state.papers) if (p.day === date) state.papers.delete(id);
+    }
+  }
+
+  function applyPending(scrollTop) {
+    const pending = state.pending;
+    state.pending = null;
+    notice.hidden = true;
+    if (!pending) return;
+    const before = new Set(state.papers.keys());
+    adoptIndex(pending.idx);
+    const fresh = new Set();
+    pending.fetched.sort((a, b) => (a[0].date < b[0].date ? -1 : 1));
+    for (const [entry, data] of pending.fetched) {
+      for (const p of data.papers || []) if (!before.has(p.id)) fresh.add(p.id);
+      const isNew = !state.sections.has(entry.date);
+      renderSection(entry, data, { prepend: isNew, fresh });
+      if (isNew) { state.days = [entry].concat(state.days.filter((d) => d.date !== entry.date)); state.next++; }
+    }
+    state.days.sort((a, b) => (a.date < b.date ? 1 : -1));
+    renderTopics();
+    markHero();
+    applyFilters();
+    renderFooter();
+    say(fresh.size ? `${plural(fresh.size, "new paper")} added` : "Archive updated");
+    if (scrollTop) window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+
+  function showNotice(text, action) {
+    notice.textContent = text;
+    notice.dataset.action = action;
+    notice.hidden = false;
+  }
+
+  function showReloadNotice(text) {
+    showNotice(text || "ArxivDaily was updated. Reload the page", "reload");
+  }
+
+  const atTop = () => window.scrollY < 120;
+  function refreshLedes() {
+    for (const s of state.sections.values()) s.head.querySelector(".lede").textContent = heroLede(s.entry, s.el.querySelectorAll(".paper:not([hidden])").length);
+    renderFooter();
+  }
+
+  // An empty (or not yet loaded) archive keeps checking too, so the first
+  // papers appear on their own as soon as they're published.
+  function refresh() {
+    if (state.index) checkForUpdates();
+    else if (!state.starting) start();
+  }
+
+  // ------------------------------------------------------------ page shell
+  function ownArchive(idx) {
+    // A fork can inherit someone else's archive; don't show it as yours.
+    const host = location.hostname.toLowerCase();
+    if (!host.endsWith(".github.io") || !idx.repository) return true;
+    return idx.repository.split("/")[0].toLowerCase() === host.split(".")[0];
+  }
+
+  function renderFooter() {
+    const idx = state.index;
+    $("updated").textContent = idx && idx.generated_at ? `Last updated ${ago(idx.generated_at)} (${new Date(idx.generated_at).toLocaleString()}).` : "";
+    const src = $("source-link");
+    src.textContent = "";
+    if (idx && idx.repository) src.append("Settings and source: ", h("a", { href: `https://github.com/${idx.repository}` }, idx.repository), ".");
+  }
+
+  function showEmpty(idx, reason) {
+    feed.textContent = "";
+    more.textContent = "";
+    const repo = idx && idx.repository && ownArchive(idx) ? idx.repository : "";
+    feed.append(h("section", { class: "empty" },
+      h("h2", null, "No papers here yet"),
+      h("p", null, reason || "This archive fills in automatically after ArxivDaily's next scheduled run finds papers on your topics. arXiv announces new papers Sunday to Thursday evenings (US Eastern time)."),
+      repo ? h("p", null, "To run it now, open ", h("a", { href: `https://github.com/${repo}/actions` }, "Actions"), " in your repository, choose ArxivDaily and click Run workflow.") : null));
+  }
+
+  function showLoadError(err) {
+    feed.textContent = "";
+    const wait = RETRY_SECONDS[Math.min(state.retry, RETRY_SECONDS.length - 1)];
+    feed.append(h("section", { class: "empty" },
+      h("h2", null, "Couldn't load the archive"),
+      h("p", null, `The archive data didn't load (${err.message || err}). Trying again in ${wait} seconds.`),
+      h("button", { class: "btn", type: "button", onclick: () => { clearTimeout(state.retryTimer); start(); } }, "Try again now")));
+    state.retryTimer = setTimeout(start, wait * 1000);
+    state.retry++;
+  }
+
+  function measureBar() {
+    document.documentElement.style.setProperty("--bar-h", $("bar").offsetHeight + "px");
+  }
+
+  async function start() {
+    state.starting = true;
+    try {
+      const idx = await getJSON("index.json", true);
+      if (!idx || !Array.isArray(idx.days) || !idx.days.length) return showEmpty(idx);
+      if (!ownArchive(idx)) return showEmpty(idx, "This archive was copied along with the repository and belongs to someone else. It will show your own papers once ArxivDaily first emails you.");
+      if ((idx.version || 1) > SUPPORTED_DATA_VERSION) return showReloadNotice();
+      state.retry = 0;
+      feed.textContent = "";
+      state.papers.clear();
+      state.sections.clear();
+      state.next = 0;
+      state.index = idx;
+      state.days = idx.days.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+      state.patterns = (idx.keywords || []).map((kw) => ({ kw, re: makePattern(kw) }));
+      for (const t of [...state.topics]) if (!(idx.keywords || []).includes(t)) state.topics.delete(t);
+      if (idx.title) document.title = idx.title;
+      renderTopics();
+      renderFooter();
+      measureBar();
+      // Restore the reader's place after a reload or coming back from a paper.
+      let saved = null;
+      try { saved = JSON.parse(session && session.getItem("arxivdaily-place") || "null"); } catch (e) {}
+      if (saved && saved.url === location.href) {
+        while (state.next < Math.min(saved.days, state.days.length)) if (!(await loadNext())) break;
+        requestAnimationFrame(() => window.scrollTo(0, saved.y));
+      } else {
+        await loadNext();
+      }
+      applyFilters();
+    } catch (err) {
+      showLoadError(err);
+    } finally {
+      state.starting = false;
+    }
+  }
+
+  // ----------------------------------------------------------------- wiring
+  function bindUI() {
+    let timer = 0;
+    input.addEventListener("input", () => {
+      $("search").classList.toggle("has-q", !!input.value);
+      clearTimeout(timer);
+      timer = setTimeout(() => setQuery(input.value), 140);
+    });
+    input.addEventListener("keydown", (e) => { if (e.key === "Escape") { input.value = ""; setQuery(""); } });
+    $("clear-q").addEventListener("click", () => { input.value = ""; setQuery(""); input.focus(); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "/" && !e.ctrlKey && !e.metaKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) {
+        e.preventDefault(); input.focus(); input.select();
+      }
+    });
+    const themeBtn = $("theme");
+    const label = () => themeBtn.setAttribute("aria-label", document.documentElement.dataset.theme === "dark" ? "Switch to light theme" : "Switch to dark theme");
+    label();
+    themeBtn.addEventListener("click", () => {
+      const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = next;
+      store.set("arxivdaily-theme", next);
+      label();
+    });
+    notice.addEventListener("click", () => {
+      if (notice.dataset.action === "reload") location.reload();
+      else applyPending(true);
+    });
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver((entries) => { if (entries.some((e) => e.isIntersecting)) maybeLoadMore(); },
+        { rootMargin: "0px 0px 1500px 0px" }).observe($("sentinel"));
+    }
+    addEventListener("scroll", () => { if (nearBottom()) maybeLoadMore(); }, { passive: true });
+    addEventListener("resize", () => { measureBar(); maybeLoadMore(); }, { passive: true });
+    addEventListener("pagehide", () => {
+      if (session) try { session.setItem("arxivdaily-place", JSON.stringify({ url: location.href, y: scrollY, days: state.next })); } catch (e) {}
+    });
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+    addEventListener("online", () => { refresh(); maybeLoadMore(); });
+    setInterval(() => { if (!document.hidden) refresh(); }, POLL_MS);
+    setInterval(() => { if (state.index) refreshLedes(); }, 60 * 1000);
+  }
+
+  if (window.matchMedia && matchMedia("(max-width: 640px)").matches) input.placeholder = "Search papers";
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  readUrl();
+  bindUI();
+  measureBar();
+  start();
+  window.ArxivDaily = { checkForUpdates, loadNext, state };
+})();
+</script>
+</body>
+</html>

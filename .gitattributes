@@ -1,0 +1,5 @@
+# Store text files with LF line endings in the repository; Git converts them
+# for your platform on checkout. Images are binary.
+* text=auto
+*.png binary
+*.svg text

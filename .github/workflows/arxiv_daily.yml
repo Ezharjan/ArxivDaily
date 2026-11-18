@@ -1,25 +1,39 @@
 name: ArxivDaily
 
-# Twice-daily checks. Each run hits arXiv once and ONLY emails if there are
-# new matching papers since the last successful run (state.json gates this).
+# arXiv announces new papers Sunday to Thursday at 20:00 US Eastern time, and
+# its daily feed refreshes at midnight Eastern (04:00/05:00 UTC). The first run
+# below fetches that update; the second is a safety net in case the first one
+# hit a hiccup. Papers are never emailed twice: state.json remembers them.
+# Times are UTC; "Delivery time" in docs/configuration.md explains how to change them.
 on:
   schedule:
-    - cron: "0 8 * * *"
-    - cron: "0 20 * * *"
+    - cron: "23 6 * * *"
+    - cron: "23 14 * * *"
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: "Render preview only, don't send email"
-        type: boolean
-        default: false
-      force:
-        description: "Ignore state.json and resend top matches"
-        type: boolean
-        default: false
+      mode:
+        description: What should this run do?
+        type: choice
+        default: send digest
+        options:
+          - send digest
+          - send test email
+          - preview only (no email)
+          - resend latest papers
+  # Editing config.json (or the code) runs a quick check and a preview, so a
+  # typo shows up right away as a red X on your commit, not at the next scheduled run.
+  push:
+    branches: [main, master]
+    paths:
+      - config.json
+      - main.py
+      - "src/**"
+      - web/index.html
+      - web/favicon.svg
+      - .github/workflows/arxiv_daily.yml
 
-# So commits pushed back to state.json have permission to land.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: arxiv-daily
@@ -27,61 +41,120 @@ concurrency:
 
 jobs:
   digest:
+    name: Fetch, rank and email
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    permissions:
+      contents: write    # save state.json and the web archive back to the repository
+      pages: read        # see whether the web archive (GitHub Pages) is turned on
+    outputs:
+      pages: ${{ steps.pages.outputs.enabled }}
+      publish: ${{ steps.save.outputs.changed == 'true' || github.event_name != 'schedule' }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          # We need a token that can push the state.json update back.
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 1
+      - name: Check out
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
-          cache: pip
+          python-version: "3.12"
 
-      - name: Install dependencies
+      - name: Is the web archive on?
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          info=$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.build_type + " " + .html_url' 2>/dev/null || true)
+          case "$info" in
+            workflow\ *)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "url=${info#workflow }" >> "$GITHUB_OUTPUT"
+              echo "Web archive: ${info#workflow }" ;;
+            legacy\ *)
+              echo "enabled=false" >> "$GITHUB_OUTPUT"
+              echo "::notice title=Web archive is not published::GitHub Pages is set to 'Deploy from a branch'. To publish the ArxivDaily web archive, open Settings > Pages and choose 'GitHub Actions' as the source." ;;
+            *)
+              echo "enabled=false" >> "$GITHUB_OUTPUT"
+              echo "Web archive: off (optional; see README.md)" ;;
+          esac
 
       - name: Run ArxivDaily
-        id: run
         env:
-          SMTP_HOST:     ${{ secrets.SMTP_HOST }}
-          SMTP_PORT:     ${{ secrets.SMTP_PORT }}
+          MODE: ${{ github.event_name == 'push' && 'check' || inputs.mode || 'send digest' }}
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          SMTP_FROM:     ${{ secrets.SMTP_FROM }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_SECURITY: ${{ secrets.SMTP_SECURITY }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          ARXIVDAILY_ARCHIVE: ${{ steps.pages.outputs.enabled }}
+          ARXIVDAILY_SITE_URL: ${{ steps.pages.outputs.url }}
         run: |
-          ARGS=""
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
-          if [ "${{ github.event.inputs.force }}"   = "true" ]; then ARGS="$ARGS --force"; fi
-          python main.py $ARGS
+          case "$MODE" in
+            "send digest")             python main.py ;;
+            "send test email")         python main.py --test-email ;;
+            "preview only (no email)") python main.py --dry-run ;;
+            "resend latest papers")    python main.py --force ;;
+            check)                     python main.py --dry-run ;;
+            *) echo "::error::Unknown mode '$MODE'"; exit 1 ;;
+          esac
 
-      - name: Upload preview (artifact)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: arxiv-digest-preview
-          path: preview/
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Commit updated state
-        if: steps.run.outputs.state_changed == 'true'
+      - name: Save history
+        id: save
         run: |
-          if git diff --quiet -- state.json; then
-            echo "state.json unchanged, nothing to commit"
+          git add state.json
+          if [ -d web/data ]; then git add --all web/data; fi
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Nothing new to save."
             exit 0
           fi
-          git config user.name  "github-actions[bot]"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add state.json
-          SENT="${{ steps.run.outputs.papers_sent }}"
-          git commit -m "chore(state): update seen_ids (sent ${SENT:-0} papers)"
-          git push
+          git commit -q -m "chore(data): save papers seen on $(date -u +%Y-%m-%d) [skip ci]"
+          for attempt in 1 2 3 4 5; do
+            if git push -q origin "HEAD:${GITHUB_REF_NAME}"; then
+              echo "Saved state.json$([ -d web/data ] && echo ' and the web archive')."
+              exit 0
+            fi
+            echo "Someone pushed in the meantime; rebasing and trying again ($attempt/5)."
+            sleep $((attempt * 3))
+            git pull -q --rebase origin "${GITHUB_REF_NAME}" || { git rebase --abort 2>/dev/null; true; }
+          done
+          echo "::error title=History not saved::Couldn't push state.json. Papers from this run may be emailed again tomorrow."
+          exit 1
+
+      - name: Attach email preview
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: email-preview
+          path: |
+            preview/*.html
+            preview/*.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Package web archive
+        if: steps.pages.outputs.enabled == 'true' && (steps.save.outputs.changed == 'true' || github.event_name != 'schedule')
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: web
+
+  publish:
+    name: Publish web archive
+    needs: digest
+    if: needs.digest.outputs.pages == 'true' && needs.digest.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v5

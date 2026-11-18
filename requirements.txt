@@ -1,2 +1,2 @@
-arxiv>=2.1.0
-feedparser>=6.0.10
+# ArxivDaily needs only the Python standard library (Python 3.9 or newer).
+# Nothing to install - this file is kept so `pip install -r requirements.txt` still works.

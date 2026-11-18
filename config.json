@@ -12,13 +12,13 @@
     "cs.AI",
     "cs.CV"
   ],
-  "recipients": [
-    "machinelearningscholar@gmail.com"
-  ],
+  "recipients": [],
   "fetch": {
-    "max_results_per_keyword": 30,
-    "lookback_days": 2,
-    "sort_by": "submittedDate"
+    "source": "auto",
+    "include_cross_lists": true,
+    "include_revisions": false,
+    "lookback_days": 5,
+    "max_results": 500
   },
   "ranking": {
     "max_papers_per_email": 25,
@@ -33,5 +33,9 @@
     "subject_template": "[ArxivDaily] {n_papers} new {papers} — {date}",
     "abstract_chars": 320,
     "include_authors_max": 5
+  },
+  "archive": {
+    "keep_days": 90,
+    "max_papers_per_day": 200
   }
 }
